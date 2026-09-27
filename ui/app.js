@@ -177,15 +177,16 @@ async function beginConnect() {
     $('#connectBtn').disabled = true;
     const result = await flowfree.invoke('connect-begin', {});
     if (result.status === 'ALREADY_CONNECTED') return refreshAccount();
-    const port = result.bridge?.port;
-    setProgress('Đăng nhập Google trong cửa sổ FlowFree…');
-    await flowfree.invoke('native-google-login', { port });
-    setProgress('Đang lưu session và xác minh Flow workspace…');
+    $('#accountText').textContent = 'Đang chờ Gmail từ Chrome';
+    $('#accountDetail').textContent = 'Trong Chrome, bấm extension Flow Login Bridge rồi bấm Connect Flow. FlowFree sẽ tự tiếp tục.';
+    setProgress('Đang chờ bạn bấm Connect Flow trong Chrome…');
+    await flowfree.invoke('wait-login-bridge');
+    setProgress('Đã nhận session. Hãy chọn Gmail trong cửa sổ Google…');
     await flowfree.invoke('connect-complete', {
       connectionId: result.connectionId,
       userConfirmedSessionSent: true,
-      chooseGoogleAccount: false,
-      waitForAccountSelectionSeconds: 60
+      chooseGoogleAccount: true,
+      waitForAccountSelectionSeconds: 300
     });
     await refreshAccount();
   } catch (error) {
@@ -206,6 +207,11 @@ $$('[data-tab-target]').forEach((button) => { button.onclick = () => selectTab(b
 $$('[data-dir]').forEach((button) => { button.onclick = async () => { const directory = await flowfree.invoke('pick-directory'); if (directory) { $(`#${button.dataset.dir}`).value = directory; saveProject(); } }; });
 
 $('#connectBtn').onclick = beginConnect;
+$('#installHelper').onclick = async () => {
+  const result = await flowfree.invoke('open-extension');
+  $('#accountDetail').textContent = `Chrome đã mở trang Extensions. Bật Developer mode → Load unpacked → chọn thư mục: ${result.extensionPath}`;
+  if (result.chromeError || result.revealError) log(result.chromeError || result.revealError);
+};
 $('#refreshAccount').onclick = refreshAccount;
 $('#disconnectAccount').onclick = async () => { const result = await flowfree.invoke('disconnect-account'); log(result.reason); };
 $('#pickImageRefs').onclick = async () => { commonReferenceFiles = await flowfree.invoke('pick-files', { filters: [{ name: 'Images', extensions: ['png', 'jpg', 'jpeg', 'webp'] }] }); $('#imageRefs').value = commonReferenceFiles.map(basename).join('; '); await rebuildQueue(); };

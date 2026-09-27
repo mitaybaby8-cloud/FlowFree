@@ -75,8 +75,9 @@
     <section id="settings" class="panel">
       <div class="settings-card"><h2>Google / Flow</h2>
         <p id="accountText">Chưa kết nối</p><p id="accountDetail" class="muted">FlowFree chỉ báo Connected sau khi engine xác minh workspace.</p>
-        <div class="button-row"><button class="primary" id="connectBtn">Kết nối Google</button><button id="refreshAccount">Refresh</button><button id="disconnectAccount" disabled>Disconnect</button></div>
-        <p class="note">FlowFree mở cửa sổ Google riêng, chuyển session nội bộ qua localhost rồi lưu vào Chromium profile của engine. Không cần cài extension thủ công. Engine 0.2.3 chưa công khai API disconnect; nút được khóa để tránh xóa session bằng thao tác file không an toàn.</p>
+        <div class="button-row"><button class="primary" id="connectBtn">Kết nối Gmail trong Chrome</button><button id="refreshAccount">Refresh</button><button id="disconnectAccount" disabled>Disconnect</button></div>
+        <div class="button-row" style="margin-top:8px"><button id="installHelper">Cài Flow Login Helper lần đầu</button></div>
+        <p class="note">Cài helper một lần. Sau đó mỗi lần kết nối, chỉ cần bấm Flow Login Bridge → Connect Flow trong Chrome; FlowFree tự nhận session, mở bộ chọn Gmail và tự lưu để khôi phục khi mở lại. Engine 0.2.3 chưa có API disconnect nên nút Disconnect được khóa.</p>
       </div>
     </section>
   </main>

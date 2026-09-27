@@ -1,15 +1,18 @@
 import { app, BrowserWindow, ipcMain, dialog, shell } from 'electron';
+import { execFile } from 'node:child_process';
 import fs from 'node:fs/promises';
 import path from 'node:path';
+import { promisify } from 'node:util';
 import { fileURLToPath } from 'node:url';
 import { FlowEngineClient } from './engine-client.mjs';
 import { BatchRunner } from './batch-runner.mjs';
+import { waitForQueuedSession } from './bridge-login.mjs';
 import { assessImageEngineCompatibility } from './flow-image-config.mjs';
 import { buildImageQueue, isReferenceImage } from './image-queue.mjs';
-import { FLOW_LOGIN_URL, collectGoogleCookies, isFlowLoginCompletionUrl, sendSessionToBridge, validateBridgePort } from './native-login.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-let win, loginWindow, engine, runner;
+const execFileAsync = promisify(execFile);
+let win, engine, runner;
 
 function send(data){ win?.webContents.send('flowfree:event', data); }
 async function makeWindow(){
@@ -41,49 +44,20 @@ ipcMain.handle('pick-reference-folder', async()=> {
 });
 ipcMain.handle('open-extension', async()=> {
   const extensionPath = app.isPackaged ? path.join(process.resourcesPath, 'extension') : path.resolve(__dirname, '../extension');
-  return shell.openPath(extensionPath);
+  const revealError = await shell.openPath(extensionPath);
+  let chromeError = '';
+  try {
+    if (process.platform === 'darwin') await execFileAsync('/usr/bin/open', ['-a', 'Google Chrome', 'chrome://extensions']);
+    else await shell.openExternal('chrome://extensions');
+  } catch (error) {
+    chromeError = error.message;
+  }
+  return { extensionPath, revealError, chromeError };
 });
 ipcMain.handle('accounts', ()=>engine.listAccounts());
 ipcMain.handle('connect-begin', (_,args)=>engine.beginAccountConnection(args||{}));
+ipcMain.handle('wait-login-bridge', ()=>waitForQueuedSession(()=>engine.loginBridgeStatus()));
 ipcMain.handle('connect-complete', (_,args)=>engine.completeAccountConnection(args));
-ipcMain.handle('native-google-login', async(_,args={})=>{
-  const port = validateBridgePort(args.port);
-  loginWindow?.close();
-  loginWindow = new BrowserWindow({
-    width: 1080, height: 780, title: 'Đăng nhập Google cho FlowFree',
-    webPreferences: { partition:'persist:flowfree-google-login', contextIsolation:true, nodeIntegration:false, sandbox:true }
-  });
-  loginWindow.webContents.setWindowOpenHandler(()=>({action:'deny'}));
-  const activeWindow = loginWindow;
-  return new Promise((resolve,reject)=>{
-    let settled = false;
-    const finish = (error,result)=>{
-      if(settled) return;
-      settled = true;
-      clearTimeout(timer);
-      activeWindow.webContents.removeListener('did-navigate',navigated);
-      activeWindow.webContents.removeListener('did-navigate-in-page',navigated);
-      activeWindow.removeListener('closed',closed);
-      if(error) reject(error); else resolve(result);
-    };
-    const transfer = async(url)=>{
-      if(!isFlowLoginCompletionUrl(url)) return;
-      try {
-        const cookies = await collectGoogleCookies(activeWindow.webContents.session);
-        const result = await sendSessionToBridge(port,cookies);
-        finish(null,{ok:true,cookieCount:result.cookieCount});
-        activeWindow.close();
-      } catch(error) { finish(error); }
-    };
-    const navigated = (_event,url)=>void transfer(url);
-    const closed = ()=>finish(new Error('Cửa sổ đăng nhập Google đã đóng trước khi Flow session được gửi.'));
-    const timer = setTimeout(()=>finish(new Error('Hết thời gian chờ đăng nhập Google sau 5 phút.')),300_000);
-    activeWindow.webContents.on('did-navigate',navigated);
-    activeWindow.webContents.on('did-navigate-in-page',navigated);
-    activeWindow.on('closed',closed);
-    activeWindow.loadURL(FLOW_LOGIN_URL).catch((error)=>finish(error));
-  }).finally(()=>{ if(loginWindow===activeWindow) loginWindow=null; });
-});
 ipcMain.handle('inspect', async(_,accountId)=>{
   const capabilities = await engine.inspect(accountId);
   return { ...capabilities, phase1Compatibility: assessImageEngineCompatibility(capabilities) };

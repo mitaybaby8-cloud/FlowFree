@@ -44,6 +44,7 @@ export class FlowEngineClient {
 
   listAccounts() { return this.call('flow_list_accounts'); }
   beginAccountConnection(args = {}) { return this.call('flow_begin_account_connection', args); }
+  loginBridgeStatus() { return this.call('flow_login_bridge_status'); }
   completeAccountConnection(args) { return this.call('flow_complete_account_connection', args); }
   inspect(accountId) { return this.call('flow_inspect_account', accountId ? { accountId } : {}); }
   jobStatus(jobId, waitSeconds = 10) { return this.call('flow_job_status', { jobId, waitSeconds }); }
