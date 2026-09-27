@@ -1,5 +1,6 @@
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { FLOW_PROMPT_SELECTOR } from './flow-workspace.mjs';
 
 const implementationEntry = process.env.FLOWFREE_ENGINE_IMPLEMENTATION;
 if (!implementationEntry) throw new Error('FLOWFREE_ENGINE_IMPLEMENTATION is required.');
@@ -34,6 +35,12 @@ FlowAdapter.prototype.readyPage = async function readyPage(accountId, requireLog
     await this.store.markAccountConnected(accountId, false);
   }
   return page;
+};
+
+// The current Flow editor is a visible ProseMirror contenteditable without the
+// role/data-placeholder attributes used by google-flow-mcp 0.2.3.
+FlowAdapter.prototype.promptLocator = function promptLocator(page) {
+  return page.locator(FLOW_PROMPT_SELECTOR);
 };
 
 await import(pathToFileURL(implementationEntry).href);

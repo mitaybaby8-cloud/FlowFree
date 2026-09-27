@@ -1,6 +1,7 @@
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { parseVisibleFlowSelections, workspaceAvailable } from './flow-workspace.mjs';
+import { FLOW_PROMPT_SELECTOR, parseVisibleFlowSelections, workspaceAvailable } from './flow-workspace.mjs';
+import { closeHiddenManagedSession } from './managed-browser-session.mjs';
 
 const engineDist = process.argv[2];
 const accountId = process.argv[3] || 'flowfree';
@@ -27,11 +28,17 @@ const [{ FlowStore }, { BrowserManager }, { CookieBridge }, { FlowAdapter }] = a
 const store = new FlowStore();
 await store.initialize();
 const browsers = new BrowserManager(store);
+FlowAdapter.prototype.promptLocator = function promptLocator(page) {
+  return page.locator(FLOW_PROMPT_SELECTOR);
+};
 const flow = new FlowAdapter(store, browsers, new CookieBridge());
 
 try {
   await store.ensureAccount(accountId, 'FlowFree Google', { browserMode: 'managed' });
   if (mode === 'connect') await store.setHeadlessAfterLogin(accountId, false);
+  if (await closeHiddenManagedSession({ dataDir: store.dataDir, accountId })) {
+    emit('hidden-browser-closed', { accountId, message: 'Đã đóng phiên Chrome ẩn cũ; đang mở lại cửa sổ đăng nhập hiển thị.' });
+  }
   const page = await browsers.pageFor(accountId);
   emit('browser-opened', {
     accountId,

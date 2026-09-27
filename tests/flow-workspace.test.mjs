@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { isFlowWorkspaceUrl, parseVisibleFlowSelections, workspaceAvailable } from '../src/flow-workspace.mjs';
+import { FLOW_PROMPT_SELECTOR, isFlowWorkspaceUrl, parseVisibleFlowSelections, workspaceAvailable } from '../src/flow-workspace.mjs';
 
 test('recognizes both legacy and current Google Flow project URLs', () => {
   assert.equal(isFlowWorkspaceUrl('https://labs.google/fx/tools/flow/project/abc'), true);
@@ -19,6 +19,11 @@ test('requires a visible prompt on the current Flow project page', async () => {
   });
   assert.equal(await workspaceAvailable(makePage(true)), true);
   assert.equal(await workspaceAvailable(makePage(false)), false);
+});
+
+test('uses the verified current ProseMirror editor and excludes generic hidden textareas', () => {
+  assert.match(FLOW_PROMPT_SELECTOR, /\.ProseMirror\[contenteditable="true"\]/);
+  assert.doesNotMatch(FLOW_PROMPT_SELECTOR, /(?:^|,\s*)textarea(?:,|$)/);
 });
 
 test('reads only the model and ratio visibly selected in the Flow prompt box', () => {

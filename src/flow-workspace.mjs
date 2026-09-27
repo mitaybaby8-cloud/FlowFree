@@ -11,6 +11,14 @@ export function isFlowWorkspaceUrl(value) {
   }
 }
 
+export const FLOW_PROMPT_SELECTOR = [
+  'textarea[placeholder*="prompt" i]',
+  'textarea[placeholder*="describe" i]',
+  '[contenteditable="true"][role="textbox"]',
+  '[contenteditable="true"][data-placeholder*="prompt" i]',
+  '.ProseMirror[contenteditable="true"]'
+].join(', ');
+
 export function parseVisibleFlowSelections(text) {
   const value = String(text || '');
   const modelLabels = [...value.matchAll(/Nano Banana (?:Pro|2 Lite|2)(?!\s*Lite)/gi)].map((match) => match[0]);
@@ -39,13 +47,7 @@ async function firstVisible(locator) {
 
 export async function workspaceAvailable(page) {
   const projectUrl = isFlowWorkspaceUrl(page.url());
-  const prompt = page.locator([
-    'textarea[placeholder*="prompt" i]',
-    'textarea[placeholder*="describe" i]',
-    '[contenteditable="true"][role="textbox"]',
-    '[contenteditable="true"][data-placeholder*="prompt" i]',
-    'textarea'
-  ].join(', '));
+  const prompt = page.locator(FLOW_PROMPT_SELECTOR);
   const promptVisible = await firstVisible(prompt);
   if (projectUrl) return promptVisible;
   if (promptVisible && /^https:\/\/(?:labs\.google|flow\.google\.com)(?:\/|$)/i.test(page.url())) return true;
