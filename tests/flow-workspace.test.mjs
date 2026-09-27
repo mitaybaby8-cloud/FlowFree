@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { isFlowWorkspaceUrl, workspaceAvailable } from '../src/flow-workspace.mjs';
+import { isFlowWorkspaceUrl, parseVisibleFlowSelections, workspaceAvailable } from '../src/flow-workspace.mjs';
 
 test('recognizes both legacy and current Google Flow project URLs', () => {
   assert.equal(isFlowWorkspaceUrl('https://labs.google/fx/tools/flow/project/abc'), true);
@@ -19,4 +19,10 @@ test('requires a visible prompt on the current Flow project page', async () => {
   });
   assert.equal(await workspaceAvailable(makePage(true)), true);
   assert.equal(await workspaceAvailable(makePage(false)), false);
+});
+
+test('reads only the model and ratio visibly selected in the Flow prompt box', () => {
+  const result = parseVisibleFlowSelections('Tác nhân\n🍌 Nano Banana 2 Lite\ncrop_16_9\nx2');
+  assert.deepEqual(result.models, [{ id:'nano-banana-2-lite', label:'Nano Banana 2 Lite', selected:true }]);
+  assert.deepEqual(result.ratios, ['16:9']);
 });

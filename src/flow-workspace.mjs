@@ -11,6 +11,24 @@ export function isFlowWorkspaceUrl(value) {
   }
 }
 
+export function parseVisibleFlowSelections(text) {
+  const value = String(text || '');
+  const modelLabels = [...value.matchAll(/Nano Banana (?:Pro|2 Lite|2)(?!\s*Lite)/gi)].map((match) => match[0]);
+  const uniqueLabels = [...new Set(modelLabels.map((label) => label.replace(/\s+/g, ' ').trim()))];
+  const idForModel = (label) => label.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+  const ratioMap = [
+    ['16:9', /(?:\b16:9\b|crop_16_9)/i],
+    ['9:16', /(?:\b9:16\b|crop_9_16)/i],
+    ['4:3', /(?:\b4:3\b|crop_4_3)/i],
+    ['3:4', /(?:\b3:4\b|crop_3_4)/i],
+    ['1:1', /(?:\b1:1\b|crop_(?:square|1_1))/i]
+  ];
+  return {
+    models: uniqueLabels.map((label) => ({ id: idForModel(label), label, selected: true })),
+    ratios: ratioMap.filter(([, pattern]) => pattern.test(value)).map(([ratio]) => ratio)
+  };
+}
+
 async function firstVisible(locator) {
   const count = await locator.count().catch(() => 0);
   for (let index = 0; index < count; index += 1) {

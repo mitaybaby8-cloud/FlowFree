@@ -1,6 +1,6 @@
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { workspaceAvailable } from './flow-workspace.mjs';
+import { parseVisibleFlowSelections, workspaceAvailable } from './flow-workspace.mjs';
 
 const engineDist = process.argv[2];
 const accountId = process.argv[3] || 'flowfree';
@@ -63,6 +63,13 @@ try {
             visibleDurations: settings.durationSeconds
           };
         }
+      }
+      const visible = parseVisibleFlowSelections(await page.locator('body').innerText().catch(() => ''));
+      if (!(live.models?.image?.length) && visible.models.length) {
+        live.models = { image: visible.models, video: live.models?.video || [] };
+      }
+      if (!(live.aspectRatiosByMedia?.image?.length) && visible.ratios.length) {
+        live.aspectRatiosByMedia = { image: visible.ratios, video: live.aspectRatiosByMedia?.video || [] };
       }
       const capabilities = {
         url: page.url(),
