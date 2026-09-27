@@ -193,21 +193,13 @@ async function refreshAccount() {
 async function beginConnect() {
   try {
     $('#connectBtn').disabled = true;
-    const result = await flowfree.invoke('connect-begin', {});
-    if (result.status === 'ALREADY_CONNECTED') return refreshAccount();
-    $('#accountText').textContent = 'Đang chờ Gmail từ Chrome';
-    $('#accountDetail').textContent = 'Trong Chrome, bấm extension FlowFree Login Helper rồi bấm Connect Flow. FlowFree sẽ tự tiếp tục.';
-    setProgress('Đang chờ bạn bấm Connect Flow trong Chrome…');
-    const bridgeStatus = await flowfree.invoke('wait-login-bridge');
-    log(`Login helper đã gửi session qua bridge ${bridgeStatus.port || 'không rõ cổng'}.`);
-    setProgress('Đã nhận session. Hãy chọn Gmail trong cửa sổ Google…');
-    const completion = await flowfree.invoke('connect-complete', {
-      connectionId: result.connectionId,
-      userConfirmedSessionSent: true,
-      chooseGoogleAccount: true,
-      waitForAccountSelectionSeconds: 300
-    });
-    log(completion);
+    const accounts = await flowfree.invoke('accounts');
+    if (accounts.readyForGeneration && accounts.defaultAccountId) return refreshAccount();
+    $('#accountText').textContent = 'Đang mở Google Flow';
+    $('#accountDetail').textContent = 'Hãy đăng nhập trực tiếp trong cửa sổ Chrome riêng của FlowFree. Không cần extension.';
+    setProgress('Đang mở Chrome riêng của FlowFree…');
+    const completion = await flowfree.invoke('connect-managed');
+    log(`Managed login complete: ${completion.accountId}`);
     await refreshAccount();
   } catch (error) {
     $('#accountText').textContent = 'Kết nối Google thất bại';
@@ -229,18 +221,6 @@ $$('[data-tab-target]').forEach((button) => { button.onclick = () => selectTab(b
 $$('[data-dir]').forEach((button) => { button.onclick = async () => { const directory = await flowfree.invoke('pick-directory'); if (directory) { $(`#${button.dataset.dir}`).value = directory; saveProject(); } }; });
 
 $('#connectBtn').onclick = beginConnect;
-$('#installHelper').onclick = async () => {
-  try {
-    const result = await flowfree.invoke('open-extension');
-    $('#accountText').textContent = 'Extension đã chuẩn bị sẵn';
-    $('#accountDetail').textContent = `Chrome Extensions và đúng thư mục đã mở. Bật Developer mode → Load unpacked → dán đường dẫn đã copy: ${result.extensionPath}`;
-    setProgress('Chỉ còn chọn Load unpacked trong Chrome');
-    if (result.chromeError) log(result.chromeError);
-  } catch (error) {
-    $('#accountDetail').textContent = `Không mở được extension: ${error.message}`;
-    setProgress('Chuẩn bị extension lỗi');
-  }
-};
 $('#refreshAccount').onclick = refreshAccount;
 $('#disconnectAccount').onclick = async () => { const result = await flowfree.invoke('disconnect-account'); log(result.reason); };
 $('#pickImageRefs').onclick = async () => { commonReferenceFiles = await flowfree.invoke('pick-files', { filters: [{ name: 'Images', extensions: ['png', 'jpg', 'jpeg', 'webp'] }] }); $('#imageRefs').value = commonReferenceFiles.map(basename).join('; '); await rebuildQueue(); };
@@ -255,7 +235,16 @@ $('#retryErrors').onclick = () => { imageQueue = imageQueue.map((item) => item.s
 $('#runImages').onclick = async () => { if (!compatibility.generationEnabled) { setProgress('Generation bị khóa: API resolution/upscale ảnh chưa được xác minh.'); return; } };
 $('#runVideos').onclick = () => setProgress('Video generation chưa được bật trong port này.');
 
-flowfree.onEvent((event) => { log(event); });
+flowfree.onEvent((event) => {
+  log(event);
+  if (event?.channel !== 'managed-login') return;
+  if (event.message) {
+    $('#accountDetail').textContent = event.message;
+    setProgress(event.message);
+  }
+  if (event.type === 'browser-opened') $('#accountText').textContent = 'Đăng nhập Google trong Chrome FlowFree';
+  if (event.type === 'verifying') $('#accountText').textContent = 'Đang xác minh Flow workspace';
+});
 restoreLog();
 restoreProject();
 renderQueue();

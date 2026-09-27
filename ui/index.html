@@ -75,9 +75,8 @@
     <section id="settings" class="panel">
       <div class="settings-card"><h2>Google / Flow</h2>
         <p id="accountText">Chưa kết nối</p><p id="accountDetail" class="muted">FlowFree chỉ báo Connected sau khi engine xác minh workspace.</p>
-        <div class="button-row"><button class="primary" id="connectBtn">Kết nối Gmail trong Chrome</button><button id="refreshAccount">Refresh</button><button id="disconnectAccount" disabled>Disconnect</button></div>
-        <div class="button-row" style="margin-top:8px"><button id="installHelper">Mở đúng chỗ để cài Helper</button></div>
-        <p class="note">Nút trên tự chép extension đi kèm FlowFree vào một thư mục cố định, mở đúng thư mục đó, mở Chrome Extensions và copy sẵn đường dẫn. Bạn chỉ cần bật Developer mode → Load unpacked → dán đường dẫn. Sau khi cài một lần, bấm FlowFree Login Helper → Connect Flow; FlowFree tự nhận và lưu session.</p>
+        <div class="button-row"><button class="primary" id="connectBtn">Kết nối Google</button><button id="refreshAccount">Refresh</button><button id="disconnectAccount" disabled>Disconnect</button></div>
+        <p class="note">FlowFree mở một Chrome profile riêng. Đăng nhập Google trực tiếp một lần trong cửa sổ đó; session được giữ trong profile riêng và tự khôi phục khi mở lại. FlowFree không đọc hoặc sao chép cookie từ Chrome cá nhân.</p>
       </div>
     </section>
   </main>

@@ -1,5 +1,5 @@
 import { app, BrowserWindow, clipboard, ipcMain, dialog, shell } from 'electron';
-import { execFile } from 'node:child_process';
+import { execFile, spawn } from 'node:child_process';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { promisify } from 'node:util';
@@ -12,7 +12,16 @@ import { buildImageQueue, isReferenceImage } from './image-queue.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const execFileAsync = promisify(execFile);
-let win, engine, runner;
+let win, engine, runner, managedLoginWorker;
+
+const singleInstance = app.requestSingleInstanceLock();
+if (!singleInstance) app.quit();
+app.on('second-instance', ()=>{
+  if (!win) return;
+  if (win.isMinimized()) win.restore();
+  win.show();
+  win.focus();
+});
 
 function send(data){ win?.webContents.send('flowfree:event', data); }
 async function makeWindow(){
@@ -21,11 +30,12 @@ async function makeWindow(){
 }
 
 app.whenReady().then(async()=>{
+  if (!singleInstance) return;
   const engineEntry = app.isPackaged ? path.join(process.resourcesPath, 'engine', 'dist', 'index.js') : undefined;
   engine = new FlowEngineClient({ engineEntry });
   await makeWindow();
 });
-app.on('window-all-closed', async()=>{ await engine?.close().catch(()=>{}); if(process.platform!=='darwin') app.quit(); });
+app.on('window-all-closed', async()=>{ managedLoginWorker?.kill(); await engine?.close().catch(()=>{}); if(process.platform!=='darwin') app.quit(); });
 app.on('activate', ()=>{ if(BrowserWindow.getAllWindows().length===0) makeWindow(); });
 
 ipcMain.handle('pick-directory', async()=> (await dialog.showOpenDialog(win,{properties:['openDirectory','createDirectory']})).filePaths[0] || '');
@@ -63,6 +73,46 @@ ipcMain.handle('accounts', ()=>engine.listAccounts());
 ipcMain.handle('connect-begin', (_,args)=>engine.beginAccountConnection(args||{}));
 ipcMain.handle('wait-login-bridge', ()=>waitForQueuedSession(()=>engine.loginBridgeStatus()));
 ipcMain.handle('connect-complete', (_,args)=>engine.completeAccountConnection(args));
+ipcMain.handle('connect-managed', async()=>{
+  if (managedLoginWorker) throw new Error('Một cửa sổ kết nối Google đang chạy.');
+  const engineDist = app.isPackaged ? path.join(process.resourcesPath, 'engine', 'dist') : path.resolve(__dirname, '../vendor/google-flow-mcp/dist');
+  const workerPath = path.join(__dirname, 'managed-login-worker.mjs');
+  return new Promise((resolve,reject)=>{
+    const child = spawn(process.execPath, [workerPath, engineDist, 'flowfree', '600000'], {
+      env: { ...process.env, ELECTRON_RUN_AS_NODE: '1', FLOW_MCP_HEADLESS: '0' },
+      stdio: ['ignore', 'pipe', 'pipe']
+    });
+    managedLoginWorker = child;
+    let stdoutBuffer = '';
+    let stderr = '';
+    let completed;
+    const handleLine = (line)=>{
+      if (!line.trim()) return;
+      try {
+        const event = JSON.parse(line);
+        send({ channel:'managed-login', ...event });
+        if (event.type === 'complete') completed = event;
+        if (event.type === 'error') stderr = event.message;
+      } catch {
+        stderr += `${line}\n`;
+      }
+    };
+    child.stdout.on('data',(chunk)=>{
+      stdoutBuffer += chunk.toString();
+      const lines = stdoutBuffer.split('\n');
+      stdoutBuffer = lines.pop() || '';
+      lines.forEach(handleLine);
+    });
+    child.stderr.on('data',(chunk)=>{ stderr += chunk.toString(); });
+    child.once('error',(error)=>reject(error));
+    child.once('exit',(code)=>{
+      if (stdoutBuffer) handleLine(stdoutBuffer);
+      managedLoginWorker = null;
+      if (code === 0 && completed) resolve(completed);
+      else reject(new Error(stderr.trim() || `Managed login worker stopped with code ${code}.`));
+    });
+  }).finally(()=>{ managedLoginWorker = null; });
+});
 ipcMain.handle('inspect', async(_,accountId)=>{
   const capabilities = await engine.inspect(accountId);
   return { ...capabilities, phase1Compatibility: assessImageEngineCompatibility(capabilities) };

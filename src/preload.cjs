@@ -1,7 +1,7 @@
 const { contextBridge, ipcRenderer } = require('electron');
 
 const allowedInvoke = new Set([
-  'pick-directory','pick-files','pick-text-file','pick-reference-folder','open-extension','accounts','connect-begin','wait-login-bridge','connect-complete','disconnect-account','inspect','prepare-image-queue','run-images','run-videos','cancel'
+  'pick-directory','pick-files','pick-text-file','pick-reference-folder','open-extension','accounts','connect-begin','wait-login-bridge','connect-complete','connect-managed','disconnect-account','inspect','prepare-image-queue','run-images','run-videos','cancel'
 ]);
 
 contextBridge.exposeInMainWorld('flowfree', {
