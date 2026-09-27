@@ -5,7 +5,6 @@ const $$ = (selector) => [...document.querySelectorAll(selector)];
 const PROJECT_KEY = 'flowfree:glabs-port:project-v1';
 
 let accountId = '';
-let pendingConnectionId = '';
 let commonReferenceFiles = [];
 let folderReferenceFiles = [];
 let manualReferenceFilesByIndex = {};
@@ -175,26 +174,26 @@ async function refreshAccount() {
 
 async function beginConnect() {
   try {
+    $('#connectBtn').disabled = true;
     const result = await flowfree.invoke('connect-begin', {});
     if (result.status === 'ALREADY_CONNECTED') return refreshAccount();
-    pendingConnectionId = result.connectionId;
-    await flowfree.invoke('open-extension');
-    $('#connectBtn').textContent = 'Hoàn tất kết nối';
-    $('#connectBtn').dataset.stage = 'complete';
-    setProgress('Mở extension Flow Login Bridge và bấm Connect Flow');
-    log(result.userMessage || 'Flow Login Bridge đang chờ session.');
-  } catch (error) { log(error.message); setProgress('Kết nối lỗi'); }
-}
-
-async function completeConnect() {
-  try {
-    setProgress('Đang xác minh Google account và Flow workspace…');
-    await flowfree.invoke('connect-complete', { connectionId: pendingConnectionId, userConfirmedSessionSent: true, chooseGoogleAccount: true, waitForAccountSelectionSeconds: 300 });
-    $('#connectBtn').textContent = 'Kết nối Google';
-    $('#connectBtn').dataset.stage = '';
-    pendingConnectionId = '';
+    const port = result.bridge?.port;
+    setProgress('Đăng nhập Google trong cửa sổ FlowFree…');
+    await flowfree.invoke('native-google-login', { port });
+    setProgress('Đang lưu session và xác minh Flow workspace…');
+    await flowfree.invoke('connect-complete', {
+      connectionId: result.connectionId,
+      userConfirmedSessionSent: true,
+      chooseGoogleAccount: false,
+      waitForAccountSelectionSeconds: 60
+    });
     await refreshAccount();
-  } catch (error) { log(error.message); setProgress('Kết nối lỗi'); }
+  } catch (error) {
+    log(error.message);
+    setProgress('Kết nối lỗi');
+  } finally {
+    $('#connectBtn').disabled = false;
+  }
 }
 
 if (!bridgeReady) {
@@ -206,7 +205,7 @@ $$('.tab').forEach((button) => { button.onclick = () => selectTab(button.dataset
 $$('[data-tab-target]').forEach((button) => { button.onclick = () => selectTab(button.dataset.tabTarget); });
 $$('[data-dir]').forEach((button) => { button.onclick = async () => { const directory = await flowfree.invoke('pick-directory'); if (directory) { $(`#${button.dataset.dir}`).value = directory; saveProject(); } }; });
 
-$('#connectBtn').onclick = () => $('#connectBtn').dataset.stage === 'complete' ? completeConnect() : beginConnect();
+$('#connectBtn').onclick = beginConnect;
 $('#refreshAccount').onclick = refreshAccount;
 $('#disconnectAccount').onclick = async () => { const result = await flowfree.invoke('disconnect-account'); log(result.reason); };
 $('#pickImageRefs').onclick = async () => { commonReferenceFiles = await flowfree.invoke('pick-files', { filters: [{ name: 'Images', extensions: ['png', 'jpg', 'jpeg', 'webp'] }] }); $('#imageRefs').value = commonReferenceFiles.map(basename).join('; '); await rebuildQueue(); };

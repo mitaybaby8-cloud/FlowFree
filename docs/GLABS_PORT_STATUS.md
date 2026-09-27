@@ -19,7 +19,7 @@ The current `flow_generate_image` schema accepts model, plain ratio, output coun
 
 | Feature | Status | Unit tested | Live tested | Notes |
 |---|---|---:|---:|---|
-| Login | IMPLEMENTED | No | No | Existing two-step Flow Login Bridge retained with clearer UX. |
+| Login | UNIT TESTED | Yes | No | One-click managed Google window transfers cookies to the verified localhost bridge; no manual extension install. |
 | Session restore | IMPLEMENTED | No | No | Engine persists account records and isolated Chromium profiles; app verifies workspace on launch. |
 | Refresh account | IMPLEMENTED | No | No | Calls list + live inspect; does not show connected for an unavailable workspace. |
 | Disconnect | BLOCKED | No | No | Engine 0.2.3 has no public disconnect/remove tool. |
@@ -44,6 +44,6 @@ The current `flow_generate_image` schema accepts model, plain ratio, output coun
 
 ## Required next verification
 
-1. User connects a real Google account through Flow Login Bridge.
+1. User connects a real Google account in FlowFree's managed login window.
 2. Confirm restart restores the account and `flow_inspect_account` reports a real workspace.
 3. Decide how image `2K`/`4K` should be implemented using a public, verified engine contract. G-Labs documents its behavior but does not publish the desktop implementation/API used for that upscale path.
