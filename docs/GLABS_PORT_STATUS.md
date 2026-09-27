@@ -15,9 +15,9 @@ Status values: `NOT STARTED`, `IMPLEMENTED`, `UNIT TESTED`, `LIVE TESTED`, `BLOC
 
 ### Engine migration in progress (2026-09-27)
 
-The app integration now targets the vendored MIT-licensed `ffroliva/gflow-cli` 0.79.1 source instead of calling `google-flow-mcp` 0.2.3 for login and image generation. The old engine remains in the tree until the replacement passes live login and image generation on this Mac. The new adapter has offline coverage for model aliases, strict output paths, per-job multi-reference arguments and isolated runtime/profile directories.
+Image generation currently targets the vendored MIT-licensed `ffroliva/gflow-cli` 0.79.1 source. Login now follows the inspected FlowOnly/browser2api mechanism: real Google Chrome, fixed CDP port 9224 and persistent profile `~/.browser2api/browser_data/flow_cdp`. The old engines remain in the tree until the replacement passes live generation on this Mac.
 
-`gflow-cli` itself was installed from the vendored source under Python 3.13 and its real `auth status` command was executed successfully. No FlowFree gflow profile exists yet, so login and generation are correctly recorded as **NOT LIVE TESTED** for the replacement engine until the user completes the one-time Google sign-in.
+The FlowOnly ZIP and its installed `browser2api` checkout were inspected directly. The ZIP GUI opens Chrome with only `--remote-debugging-port=9224`, `--user-data-dir=~/.browser2api/browser_data/flow_cdp`, first-run suppression and the Flow URL; its GUI regards the CDP endpoint as connected. FlowFree now reproduces those launch semantics. Unit tests pass, but launching Chrome from the agent sandbox was blocked by macOS Crashpad permission, so the revised app login remains **NOT LIVE TESTED** until launched normally by the user.
 
 The current engine verifies persistent account profiles and exposes `flow_list_accounts`, `flow_begin_account_connection`, `flow_complete_account_connection`, `flow_inspect_account`, `flow_generate_image`, `flow_generate_video`, `flow_job_status`, and `flow_download_job`.
 
@@ -25,8 +25,8 @@ The current `flow_generate_image` schema accepts model, plain ratio, output coun
 
 | Feature | Status | Unit tested | Live tested | Notes |
 |---|---|---:|---:|---|
-| Login | LIVE TESTED | Yes | Yes | The managed worker opened the saved profile, reached a real `flow.google.com/project/...`, detected the live `.ProseMirror[contenteditable=true]` prompt, verified `signedIn: true` and `workspaceAvailable: true`, and returned `complete` on 2026-09-27. Headless-after-login remains disabled. |
-| Session restore | IMPLEMENTED | Yes | No | On launch, FlowFree detects the saved managed account, relaunches its isolated Chromium profile and verifies the project URL plus visible prompt before reporting connected. An app restart live check is still required. |
+| Login | IMPLEMENTED | Yes | No | Reimplemented from the supplied FlowOnly source: real Chrome + persistent `flow_cdp` profile + CDP 9224. Normal app launch still needs live confirmation because the agent sandbox cannot launch Chrome Crashpad. |
+| Session restore | IMPLEMENTED | Yes | No | Reuses the exact persistent FlowOnly profile and reports browser connectivity only when CDP exposes a `flow.google.com` page. App restart live check is still required. |
 | Refresh account | IMPLEMENTED | Yes | Partial | Relaunches the saved managed profile and verifies the current Flow project URL plus a visible prompt. This avoids the pinned engine's legacy `labs.google` redirect and diagnostic screenshot failure. |
 | Login worker coordination | IMPLEMENTED | Yes | Partial | A manual Connect cancels automatic startup verification first; repeated clicks share one worker. Manual Connect always invokes the login worker, brings its existing Flow page to the front and activates Google Chrome; Refresh remains the non-disruptive session check. A stale hidden session is closed before reopening visibly. |
 | Disconnect | BLOCKED | No | No | Engine 0.2.3 has no public disconnect/remove tool. |
@@ -51,6 +51,6 @@ The current `flow_generate_image` schema accepts model, plain ratio, output coun
 
 ## Required next verification
 
-1. Complete the one-time `gflow-cli` Chrome login for profile `flowfree`, then verify the actual Connect and RUN buttons end to end. The replacement does not read or copy cookies from the user's personal Chrome profile.
+1. Launch FlowFree normally, click **Kết nối Google**, and verify that the existing FlowOnly `flow_cdp` session opens and Refresh reports connected. This mechanism does not read or copy cookies from the user's personal Chrome profile.
 2. Confirm a second restart restores the account without another Google login.
 3. Decide how image `2K`/`4K` should be implemented using a public, verified engine contract. G-Labs documents its behavior but does not publish the desktop implementation/API used for that upscale path.

@@ -2,6 +2,7 @@ import { spawn } from 'node:child_process';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
+import { FlowOnlyLogin } from './flowonly-login.mjs';
 
 const IMAGE_MODELS = Object.freeze({
   'nano-banana-pro': 'nano-pro',
@@ -26,11 +27,12 @@ export function buildGflowImageCommand(request, outputFile) {
 }
 
 export class GflowCliClient {
-  constructor({ projectDir, dataDir, uvExecutable = process.env.FLOWFREE_UV_EXECUTABLE || '/opt/homebrew/bin/uv', emit = () => {} }) {
+  constructor({ projectDir, dataDir, uvExecutable = process.env.FLOWFREE_UV_EXECUTABLE || '/opt/homebrew/bin/uv', emit = () => {}, login = new FlowOnlyLogin() }) {
     this.projectDir = projectDir;
     this.dataDir = dataDir;
     this.uvExecutable = uvExecutable;
     this.emit = emit;
+    this.login = login;
     this.activeChild = null;
   }
 
@@ -76,25 +78,23 @@ export class GflowCliClient {
   }
 
   async listAccounts() {
-    const result = await this.run(['auth', 'status', '--profile', 'flowfree'], { allowExitCodes: [0, 1, 2] });
-    const connected = result.code === 0;
+    const state = await this.login.status();
+    const connected = state.connected;
     return {
-      accounts: connected ? [{ id: 'flowfree', label: 'FlowFree Google', browserMode: 'gflow-cli', connectionStatus: 'connected' }] : [],
+      accounts: connected ? [{ id: 'flowfree', label: state.title || 'Google Flow', browserMode: 'chrome-cdp', connectionStatus: 'connected' }] : [],
       connectedAccountIds: connected ? ['flowfree'] : [],
       defaultAccountId: connected ? 'flowfree' : undefined,
       readyForGeneration: connected,
       connectionRequired: !connected,
-      agentInstruction: connected ? 'gflow-cli session verified.' : 'Bấm Kết nối Google để đăng nhập một lần bằng Chrome profile riêng.'
+      agentInstruction: connected ? `Chrome Flow đang hoạt động: ${state.flowUrl}` : 'Bấm Kết nối Google để mở profile FlowOnly đã lưu.'
     };
   }
 
   async connect() {
-    this.emit({ channel: 'managed-login', type: 'browser-opened', message: 'Chrome riêng của FlowFree đang mở. Hãy đăng nhập Google trong cửa sổ đó.' });
-    const result = await this.run(['auth', 'login', '--profile', 'flowfree', '--browser', 'chrome'], {
-      onLine: (line) => this.emit({ channel: 'managed-login', type: 'progress', message: line })
-    });
-    this.emit({ channel: 'managed-login', type: 'complete', accountId: 'flowfree', message: 'Google Flow đã kết nối và lưu session.' });
-    return { type: 'complete', accountId: 'flowfree', stdout: result.stdout };
+    this.emit({ channel: 'managed-login', type: 'browser-opened', message: 'Đang mở đúng Chrome profile của FlowOnly trên cổng 9224.' });
+    const state = await this.login.connect();
+    this.emit({ channel: 'managed-login', type: 'complete', accountId: 'flowfree', message: 'Chrome Flow đã kết nối; profile sẽ giữ session khi mở lại.' });
+    return { type: 'complete', accountId: 'flowfree', flowUrl: state.flowUrl };
   }
 
   async inspectAccount(accountId) {
@@ -106,7 +106,7 @@ export class GflowCliClient {
       signedIn: true,
       workspaceAvailable: true,
       pageKind: 'workspace',
-      verification: 'gflow-cli auth status verified the saved Flow session.',
+      verification: 'FlowOnly-compatible Chrome CDP session is active on flow.google.com.',
       models: {
         image: [
           { id: 'nano-banana-pro', label: 'Nano Banana Pro' },
