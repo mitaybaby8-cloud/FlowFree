@@ -45,6 +45,6 @@ The current `flow_generate_image` schema accepts model, plain ratio, output coun
 
 ## Required next verification
 
-1. Restart FlowFree with the updated source and confirm the saved managed profile is recognized automatically on `flow.google.com/project/...`.
+1. Grant Codex macOS Accessibility/Screen Recording access, restart FlowFree with the updated source and verify the actual Connect and RUN buttons end to end. The reproducible backend gate is `npm run e2e:image`, which uses the same `BatchRunner` as RUN and validates a strict non-empty `001.png`.
 2. Confirm a second restart restores the account without another Google login.
 3. Decide how image `2K`/`4K` should be implemented using a public, verified engine contract. G-Labs documents its behavior but does not publish the desktop implementation/API used for that upscale path.
