@@ -1,8 +1,86 @@
-<!doctype html><html lang="vi"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>FlowFree</title><link rel="stylesheet" href="style.css"></head>
-<body><header><div><h1>FlowFree</h1><p>Google Flow batch engine • Mac ARM64</p></div><div class="connect"><span id="statusDot"></span><span id="accountText">Chưa kết nối</span><button id="connectBtn">Connect Google</button></div></header>
-<nav><button class="tab active" data-tab="images">ẢNH</button><button class="tab" data-tab="videos">VIDEO</button><button class="tab" data-tab="logs">NHẬT KÝ</button></nav>
-<main>
-<section id="images" class="panel active"><div class="grid"><label>Prompt batch<textarea id="imagePrompts" placeholder="001 prompt...&#10;002 prompt..."></textarea></label><div class="stack"><label>Model<select id="imageModel"><option value="ui-default">UI Default</option></select></label><label>Tỷ lệ<select id="imageRatio"><option>ui-default</option></select></label><label>Ảnh tham chiếu chung<div class="row"><input id="imageRefs" readonly><button id="pickImageRefs">Chọn ảnh</button></div></label><label>Thư mục ảnh<div class="row"><input id="imageOut" readonly><button data-dir="imageOut">Chọn</button></div></label><label><input type="checkbox" id="imageResume" checked> Resume, bỏ qua file đã xong</label><button class="primary" id="runImages">CHẠY ẢNH</button></div></div></section>
-<section id="videos" class="panel"><div class="grid"><label>Prompt batch<textarea id="videoPrompts" placeholder="001 prompt video...&#10;002 prompt video..."></textarea></label><div class="stack"><label>Chế độ<select id="videoMode"><option value="text-to-video">Text → Video</option><option value="image-to-video">Image → Video (001.png → 001.mp4)</option><option value="start-end">Start + End</option></select></label><label>Model<select id="videoModel"><option value="ui-default">UI Default</option></select></label><label>Tỷ lệ<select id="videoRatio"><option>ui-default</option></select></label><label>Duration<select id="videoDuration"><option value="">UI Default</option></select></label><label>Thư mục ảnh nguồn<div class="row"><input id="videoImages" readonly><button data-dir="videoImages">Chọn</button></div></label><label>Thư mục video<div class="row"><input id="videoOut" readonly><button data-dir="videoOut">Chọn</button></div></label><label>Thư mục End frame (Start+End)<div class="row"><input id="endDir" readonly><button data-dir="endDir">Chọn</button></div></label><label><input type="checkbox" id="videoResume" checked> Resume, bỏ qua video đã xong</label><button class="primary" id="runVideos">CHẠY VIDEO</button></div></div><p class="note">Start+End hiện dùng 2 reference theo thứ tự Start rồi End; cần live test trên tài khoản Flow để xác nhận UI bind vai trò frame đúng như mong muốn.</p></section>
-<section id="logs" class="panel"><pre id="log"></pre></section>
-</main><footer><span id="progress">Sẵn sàng</span><button id="cancel">DỪNG</button></footer><script type="module" src="app.js"></script></body></html>
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>FlowFree</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header>
+    <div><h1>FlowFree</h1><p>Google Flow studio • Mac ARM64</p></div>
+    <div class="metrics">
+      <span><b id="metricRunning">0</b> Running</span><span><b id="metricQueued">0</b> Queued</span>
+      <span><b id="metricDone">0</b> Done</span><span><b id="metricFailed">0</b> Failed</span>
+      <button class="account-pill" data-tab-target="settings"><i id="statusDot"></i><b id="metricAccounts">0</b> Accounts</button>
+    </div>
+  </header>
+  <nav>
+    <button class="tab active" data-tab="images">ẢNH</button>
+    <button class="tab" data-tab="videos">VIDEO</button>
+    <button class="tab" data-tab="logs">NHẬT KÝ</button>
+    <button class="tab" data-tab="settings">CÀI ĐẶT / GOOGLE</button>
+  </nav>
+  <main>
+    <section id="images" class="panel active">
+      <div id="compatibilityBanner" class="banner warning">Đang kiểm tra Flow engine…</div>
+      <div class="workspace">
+        <aside class="controls">
+          <h2>Flow Image</h2>
+          <div class="triple">
+            <label>Model<select id="imageModel"><option value="nano-banana-pro">Nano Banana Pro</option><option value="nano-banana-2" selected>Nano Banana 2</option><option value="nano-banana-2-lite">Nano Banana 2 Lite</option></select></label>
+            <label>Tỷ lệ<select id="imageRatio"><option>16:9</option><option>4:3</option><option>3:4</option><option>9:16</option><option selected>1:1</option></select></label>
+            <label>Độ phân giải<select id="imageResolution"><option>1K</option><option>2K</option><option>4K</option></select></label>
+          </div>
+          <div class="double">
+            <label>Job đồng thời<input id="imageConcurrency" type="number" min="1" max="10" value="1"></label>
+            <label>Delay giữa job (giây)<input id="imageDelay" type="number" min="0" max="300" value="0"></label>
+          </div>
+          <label>Prompt batch — một dòng là một job<textarea id="imagePrompts" placeholder="001 A quiet lake at sunrise&#10;002 A modern house in rain"></textarea></label>
+          <div class="button-row"><button id="importPrompts">Nhập TXT</button><button id="clearPrompts">Xóa prompt</button></div>
+          <label>Reference chung<div class="picker"><input id="imageRefs" readonly><button id="pickImageRefs">Chọn ảnh</button></div></label>
+          <label>Folder reference (auto-match 001, 002…)<div class="picker"><input id="referenceFolder" readonly><button id="pickReferenceFolder">Chọn folder</button></div></label>
+          <label>Output folder<div class="picker"><input id="imageOut" readonly><button data-dir="imageOut">Chọn folder</button></div></label>
+          <label class="check"><input type="checkbox" id="imageResume" checked> Resume và không ghi đè output hợp lệ</label>
+          <div class="button-row"><button class="primary" id="addImageQueue">THÊM VÀO QUEUE</button><button id="retryErrors">RETRY ERRORS</button></div>
+          <div class="button-row"><button class="success" id="runImages" disabled>RUN</button><button id="pauseImages">PAUSE</button><button class="danger" id="stopImages">STOP</button></div>
+        </aside>
+        <section class="queue-card">
+          <div class="queue-title"><h2>Queue</h2><span id="queueSummary">0 job</span></div>
+          <div class="table-wrap"><table>
+            <thead><tr><th>ID</th><th>Reference</th><th>Prompt</th><th>Model</th><th>Output</th><th>Trạng thái</th><th></th></tr></thead>
+            <tbody id="imageQueue"></tbody>
+          </table></div>
+        </section>
+      </div>
+    </section>
+    <section id="videos" class="panel">
+      <div class="banner warning">Video giữ nguyên từ FlowFree 0.1.1. Các mode/resolution G-Labs chưa được bật vì engine 0.2.3 chưa xác minh role Start/End, Components hay 4K.</div>
+      <div class="legacy-video">
+        <label>Prompt batch<textarea id="videoPrompts"></textarea></label>
+        <div class="controls">
+          <label>Chế độ<select id="videoMode"><option value="text-to-video">Text → Video</option><option value="image-to-video">Image → Video</option><option value="start-end">Start + End (compatibility)</option></select></label>
+          <label>Model<select id="videoModel"><option value="ui-default">UI Default</option></select></label>
+          <label>Tỷ lệ<select id="videoRatio"><option value="ui-default">UI Default</option></select></label>
+          <label>Duration<select id="videoDuration"><option value="">UI Default</option></select></label>
+          <label>Folder ảnh nguồn<div class="picker"><input id="videoImages" readonly><button data-dir="videoImages">Chọn</button></div></label>
+          <label>Folder End frame<div class="picker"><input id="endDir" readonly><button data-dir="endDir">Chọn</button></div></label>
+          <label>Output folder<div class="picker"><input id="videoOut" readonly><button data-dir="videoOut">Chọn</button></div></label>
+          <label class="check"><input type="checkbox" id="videoResume" checked> Resume</label>
+          <button id="runVideos" disabled>CHẠY VIDEO LEGACY</button>
+        </div>
+      </div>
+    </section>
+    <section id="logs" class="panel"><pre id="log"></pre></section>
+    <section id="settings" class="panel">
+      <div class="settings-card"><h2>Google / Flow</h2>
+        <p id="accountText">Chưa kết nối</p><p id="accountDetail" class="muted">FlowFree chỉ báo Connected sau khi engine xác minh workspace.</p>
+        <div class="button-row"><button class="primary" id="connectBtn">Kết nối Google</button><button id="refreshAccount">Refresh</button><button id="disconnectAccount" disabled>Disconnect</button></div>
+        <p class="note">Session được engine lưu trong profile Chromium riêng và tự khôi phục khi mở lại app. Engine 0.2.3 chưa công khai API disconnect; nút được khóa để tránh xóa session bằng thao tác file không an toàn.</p>
+      </div>
+    </section>
+  </main>
+  <footer><span id="progress">Sẵn sàng</span><span>Phase port G-Labs • safe generation gate</span></footer>
+  <script type="module" src="app.js"></script>
+</body>
+</html>

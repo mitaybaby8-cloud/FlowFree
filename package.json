@@ -8,7 +8,7 @@
   "scripts": {
     "dev": "electron .",
     "test": "node --test tests/*.test.mjs",
-    "check": "node --check src/main.mjs && node --check src/preload.cjs && node --check src/engine-client.mjs && node --check src/batch-runner.mjs && node --check ui/app.js && npm test",
+    "check": "node --check src/main.mjs && node --check src/preload.cjs && node --check src/engine-client.mjs && node --check src/batch-runner.mjs && node --check src/flow-image-config.mjs && node --check src/image-queue.mjs && node --check ui/app.js && npm test",
     "vendor:engine": "bash scripts/vendor-engine.sh",
     "build:mac": "electron-builder --mac dmg zip --arm64"
   },
