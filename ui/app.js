@@ -74,7 +74,7 @@ function restoreProject() {
     $('#imagePrompts').value = state.prompts || '';
     $('#imageModel').value = state.model || 'nano-banana-2';
     $('#imageRatio').value = state.ratio || '1:1';
-    $('#imageResolution').value = state.resolution || '1K';
+    $('#imageResolution').value = state.resolution === 'flow-default' ? state.resolution : 'flow-default';
     $('#imageConcurrency').value = state.concurrency || 1;
     $('#imageDelay').value = state.delay || 0;
     $('#imageOut').value = state.outputDirectory || '';
@@ -157,7 +157,9 @@ function applyCapabilityOptions(capabilities) {
   $('#runImages').disabled = !compatibility.generationEnabled;
   const banner = $('#compatibilityBanner');
   banner.className = `banner ${compatibility.generationEnabled ? 'ready' : 'warning'}`;
-  banner.textContent = compatibility.generationEnabled ? 'Engine đã xác minh tương thích.' : `Generation đang khóa an toàn — ${compatibility.reasons.join(' ')}`;
+  banner.textContent = compatibility.generationEnabled
+    ? 'Có thể chạy với độ phân giải mặc định của Flow. 1K/2K/4K chưa có API riêng.'
+    : `Generation đang khóa an toàn — ${compatibility.reasons.join(' ')}`;
 
   const videoModels = capabilities.models?.video || [];
   $('#videoModel').innerHTML = '<option value="ui-default">UI Default</option>' + videoModels.map((item) => `<option value="${escapeHtml(item.id || item)}">${escapeHtml(item.label || item)}</option>`).join('');
@@ -246,11 +248,53 @@ $('#addImageQueue').onclick = async () => { await rebuildQueue('QUEUED'); imageQ
 $('#pauseImages').onclick = () => { const hasPaused = imageQueue.some((item) => item.status === 'PAUSED'); imageQueue = imageQueue.map((item) => hasPaused && item.status === 'PAUSED' ? { ...item, status: 'QUEUED' } : (!hasPaused && ['WAITING', 'QUEUED'].includes(item.status) ? { ...item, status: 'PAUSED' } : item)); renderQueue(); };
 $('#stopImages').onclick = () => { imageQueue = imageQueue.map((item) => ['WAITING', 'QUEUED', 'PAUSED'].includes(item.status) ? { ...item, status: 'CANCELLED' } : item); renderQueue(); };
 $('#retryErrors').onclick = () => { imageQueue = imageQueue.map((item) => item.status === 'FAILED' ? { ...item, status: 'QUEUED', retryCount: (item.retryCount || 0) + 1, error: '' } : item); renderQueue(); };
-$('#runImages').onclick = async () => { if (!compatibility.generationEnabled) { setProgress('Generation bị khóa: API resolution/upscale ảnh chưa được xác minh.'); return; } };
+$('#runImages').onclick = async () => {
+  if (!compatibility.generationEnabled) { setProgress('Generation bị khóa: chưa đọc được model/ratio live từ Flow.'); return; }
+  if (!accountId) { setProgress('Hãy kết nối Google trước.'); return; }
+  if (!$('#imageOut').value) { setProgress('Hãy chọn output folder.'); return; }
+  try {
+    $('#runImages').disabled = true;
+    await rebuildQueue('QUEUED');
+    imageQueue = imageQueue.map((item) => ['WAITING', 'PAUSED'].includes(item.status) ? { ...item, status: 'QUEUED' } : item);
+    renderQueue();
+    const referenceFilesByIndex = Object.fromEntries(imageQueue.map((item) => [item.index, item.referenceFiles || []]));
+    const result = await flowfree.invoke('run-images', {
+      accountId,
+      prompts: $('#imagePrompts').value,
+      model: $('#imageModel').value,
+      aspectRatio: $('#imageRatio').value,
+      resolution: $('#imageResolution').value,
+      outputDirectory: $('#imageOut').value,
+      referenceFilesByIndex,
+      resume: $('#imageResume').checked,
+      retries: 2,
+      delaySeconds: Number($('#imageDelay').value) || 0
+    });
+    setProgress(result.ok ? `Đã xử lý ${result.total} job ảnh.` : 'Queue đã dừng.');
+  } catch (error) {
+    setProgress(`Generation lỗi: ${error.message}`);
+    log(`Generation lỗi: ${error.message}`);
+  } finally {
+    $('#runImages').disabled = !compatibility.generationEnabled;
+  }
+};
 $('#runVideos').onclick = () => setProgress('Video generation chưa được bật trong port này.');
 
 flowfree.onEvent((event) => {
   log(event);
+  if (event?.channel === 'image-batch') {
+    const id = event.item?.stem;
+    imageQueue = imageQueue.map((item) => item.id !== id ? item : {
+      ...item,
+      status: event.type === 'done' || event.type === 'skip' ? 'DONE' : ['retry', 'failed'].includes(event.type) ? 'FAILED' : 'GENERATING',
+      retryCount: event.type === 'retry' ? Math.max(item.retryCount || 0, event.attempt || 0) : item.retryCount || 0,
+      error: ['retry', 'failed'].includes(event.type) ? event.error || '' : '',
+      outputFile: event.type === 'done' || event.type === 'skip' ? `${$('#imageOut').value}/${id}.png` : item.outputFile || ''
+    });
+    renderQueue();
+    setProgress(event.type === 'done' ? `Hoàn tất ${id}` : event.type === 'retry' ? `${id} lỗi, đang thử lại…` : event.type === 'failed' ? `${id} thất bại.` : `${id}: ${event.type}`);
+    return;
+  }
   if (event?.channel !== 'managed-login') return;
   if (event.message) {
     $('#accountDetail').textContent = event.message;

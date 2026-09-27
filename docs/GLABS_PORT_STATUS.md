@@ -15,7 +15,7 @@ Status values: `NOT STARTED`, `IMPLEMENTED`, `UNIT TESTED`, `LIVE TESTED`, `BLOC
 
 The current engine verifies persistent account profiles and exposes `flow_list_accounts`, `flow_begin_account_connection`, `flow_complete_account_connection`, `flow_inspect_account`, `flow_generate_image`, `flow_generate_video`, `flow_job_status`, and `flow_download_job`.
 
-The current `flow_generate_image` schema accepts model, plain ratio, output count and reference file paths. It does **not** accept the G-Labs image `upscale`/resolution values `2K` or `4K`. The engine also exposes no disconnect/remove-account tool. Generation remains blocked in the desktop IPC until a compatible image resolution API is verified; no G-Labs private endpoint or payload is guessed.
+The current `flow_generate_image` schema accepts model, plain ratio, output count and reference file paths. FlowFree can now run that verified path using Flow's own default image resolution. It does **not** translate the G-Labs image `1K`/`2K`/`4K` values because the engine exposes no explicit image resolution field. The engine also exposes no disconnect/remove-account tool.
 
 | Feature | Status | Unit tested | Live tested | Notes |
 |---|---|---:|---:|---|
@@ -24,13 +24,13 @@ The current `flow_generate_image` schema accepts model, plain ratio, output coun
 | Refresh account | IMPLEMENTED | Yes | Partial | Relaunches the saved managed profile and verifies the current Flow project URL plus a visible prompt. This avoids the pinned engine's legacy `labs.google` redirect and diagnostic screenshot failure. |
 | Disconnect | BLOCKED | No | No | Engine 0.2.3 has no public disconnect/remove tool. |
 | Image model/ratio/resolution UI | IMPLEMENTED | Yes | No | Uses documented keys. Options remain editable for queue configuration when live capabilities are unavailable; generation remains gated separately. |
-| Image generation | BLOCKED | Yes (gate) | No | Resolution/upscale image API is absent in engine 0.2.3. |
+| Image generation | IMPLEMENTED | Yes | No | Uses live model/ratio capabilities and Flow-default resolution. Explicit 1K/2K/4K remain disabled because the engine has no verified image-resolution field. |
 | Batch prompts | IMPLEMENTED | Yes | No | Multi-line parser and TXT import. |
 | Reference common | IMPLEMENTED | Yes | No | Local paths only. |
 | Reference per-row | IMPLEMENTED | Yes | No | Manual picker per row. |
 | Folder mapping | IMPLEMENTED | Yes | No | Strict leading `001`, `002`, `003`; no cross-job fallback. |
 | Queue states | IMPLEMENTED | Yes | No | WAITING, QUEUED, GENERATING, DOWNLOADING, DONE, FAILED, PAUSED, CANCELLED defined. |
-| Queue execution | BLOCKED | No | No | Not connected to generation while compatibility gate is closed. |
+| Queue execution | IMPLEMENTED | Yes | No | Sequential execution, retry, per-row failure continuation and download are connected to `flow_generate_image`; live E2E is still required. |
 | Prompt/reference persistence | IMPLEMENTED | No | No | Renderer project state restores after app restart; corrupt JSON is ignored. |
 | Preview image | NOT STARTED | No | No | Requires real output and strict file validation. |
 | Retry | IMPLEMENTED | Yes | No | Retry-errors transition is present; execution remains gated. |

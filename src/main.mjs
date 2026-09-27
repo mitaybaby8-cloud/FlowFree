@@ -125,8 +125,11 @@ ipcMain.handle('disconnect-account', ()=>({
   supported:false,
   reason:'google-flow-mcp 0.2.3 không cung cấp tool disconnect/remove account.'
 }));
-ipcMain.handle('run-images', async()=>{
-  throw new Error('Generation ảnh đang khóa: google-flow-mcp 0.2.3 chưa có API resolution/upscale ảnh tương thích G-Labs.');
+ipcMain.handle('run-images', async(_,cfg)=>{
+  if (cfg?.resolution !== 'flow-default') throw new Error('Engine chỉ hỗ trợ độ phân giải mặc định của Flow; 1K/2K/4K chưa có API xác minh.');
+  if (!cfg?.accountId || !cfg?.outputDirectory || !String(cfg?.prompts || '').trim()) throw new Error('Thiếu account, output folder hoặc prompt.');
+  runner = new BatchRunner(engine, (event)=>send({ channel:'image-batch', ...event }));
+  return runner.runImageBatch(cfg);
 });
 ipcMain.handle('run-videos', async(_,cfg)=>{ runner=new BatchRunner(engine,send); return runner.runVideoBatch(cfg); });
 ipcMain.handle('cancel', ()=>{ runner?.cancel(); return true; });

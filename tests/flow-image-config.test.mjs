@@ -8,7 +8,7 @@ test('G-Labs verified Flow image keys are preserved explicitly', () => {
   assert.deepEqual(FLOW_IMAGE_RESOLUTIONS, ['1K', '2K', '4K']);
 });
 
-test('engine compatibility remains safely blocked without image resolution API', () => {
+test('engine allows Flow-default image resolution when live controls are verified', () => {
   const result = assessImageEngineCompatibility({
     workspaceAvailable: true,
     models: { image: FLOW_IMAGE_MODELS.map(({ id, label }) => ({ id, label })) },
@@ -17,5 +17,6 @@ test('engine compatibility remains safely blocked without image resolution API',
   assert.deepEqual(result.missingModels, []);
   assert.deepEqual(result.missingRatios, []);
   assert.equal(result.resolutionApiVerified, false);
-  assert.equal(result.generationEnabled, false);
+  assert.equal(result.usesFlowDefaultResolution, true);
+  assert.equal(result.generationEnabled, true);
 });

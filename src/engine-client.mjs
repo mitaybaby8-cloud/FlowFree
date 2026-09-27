@@ -13,8 +13,9 @@ function parseToolPayload(result) {
 
 export class FlowEngineClient {
   constructor({ engineEntry, env = {} } = {}) {
-    this.engineEntry = engineEntry || path.resolve(__dirname, '../vendor/google-flow-mcp/dist/index.js');
-    this.env = env;
+    const implementationEntry = engineEntry || path.resolve(__dirname, '../vendor/google-flow-mcp/dist/index.js');
+    this.engineEntry = path.resolve(__dirname, 'engine-entry.mjs');
+    this.env = { ...env, FLOWFREE_ENGINE_IMPLEMENTATION: implementationEntry };
     this.client = null;
     this.transport = null;
   }

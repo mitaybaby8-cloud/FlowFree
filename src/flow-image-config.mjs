@@ -29,17 +29,18 @@ export function assessImageEngineCompatibility(capabilities = {}) {
   if (missingModels.length) reasons.push(`Engine chưa xác nhận model: ${missingModels.join(', ')}.`);
   if (missingRatios.length) reasons.push(`Engine chưa xác nhận ratio: ${missingRatios.join(', ')}.`);
 
-  // google-flow-mcp 0.2.3 has no image resolution/upscale field in flow_generate_image.
-  // G-Labs documents 2K/4K through its own image `upscale` field, so it is not safe
-  // to translate those values into the current FlowFree engine call.
-  reasons.push('Engine 0.2.3 chưa có tham số resolution/upscale cho flow_generate_image.');
+  // google-flow-mcp 0.2.3 generates at the resolution selected/defaulted by Flow.
+  // It has no explicit image resolution field, so 1K/2K/4K stay unavailable.
+  const generationEnabled = Boolean(capabilities.workspaceAvailable) && models.size > 0 && ratios.size > 0;
+  if (!generationEnabled) reasons.push('Chưa có đủ capability live để chạy generation.');
 
   return {
     workspaceAvailable: Boolean(capabilities.workspaceAvailable),
     missingModels,
     missingRatios,
     resolutionApiVerified: false,
-    generationEnabled: false,
+    usesFlowDefaultResolution: true,
+    generationEnabled,
     reasons
   };
 }

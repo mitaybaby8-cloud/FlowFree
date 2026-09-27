@@ -17,14 +17,17 @@ function sleep(milliseconds) {
 
 if (!engineDist) throw new Error('Engine dist directory is required.');
 
-const [{ FlowStore }, { BrowserManager }] = await Promise.all([
+const [{ FlowStore }, { BrowserManager }, { CookieBridge }, { FlowAdapter }] = await Promise.all([
   import(pathToFileURL(path.join(engineDist, 'store.js')).href),
-  import(pathToFileURL(path.join(engineDist, 'browser-manager.js')).href)
+  import(pathToFileURL(path.join(engineDist, 'browser-manager.js')).href),
+  import(pathToFileURL(path.join(engineDist, 'cookie-bridge.js')).href),
+  import(pathToFileURL(path.join(engineDist, 'flow-adapter.js')).href)
 ]);
 
 const store = new FlowStore();
 await store.initialize();
 const browsers = new BrowserManager(store);
+const flow = new FlowAdapter(store, browsers, new CookieBridge());
 
 try {
   await store.ensureAccount(accountId, 'FlowFree Google', { browserMode: 'managed' });
@@ -48,12 +51,26 @@ try {
     }
     if (await workspaceAvailable(page)) {
       emit('verifying', { message: 'Đã thấy Flow workspace và ô prompt thật. Đang lưu session…' });
+      let live = {};
+      if (await flow.openAgentSettings(page).catch(() => false)) {
+        const settings = await flow.readAgentSettings(page, []).catch(() => null);
+        await page.keyboard.press('Escape').catch(() => undefined);
+        if (settings) {
+          live = {
+            models: settings.models,
+            aspectRatiosByMedia: settings.ratios,
+            outputCountsByMedia: settings.outputs,
+            visibleDurations: settings.durationSeconds
+          };
+        }
+      }
       const capabilities = {
         url: page.url(),
         signedIn: true,
         workspaceAvailable: true,
         pageKind: 'workspace',
-        verification: 'FlowFree verified the Google Flow project URL and a visible prompt input.'
+        verification: 'FlowFree verified the Google Flow project URL and a visible prompt input.',
+        ...live
       };
       await store.markAccountConnected(accountId, true);
       await store.setHeadlessAfterLogin(accountId, true);

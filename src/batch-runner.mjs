@@ -43,6 +43,7 @@ export class BatchRunner {
     const items = buildMapping(parsePromptBatch(cfg.prompts), cfg.outputDirectory, cfg.videoDirectory || cfg.outputDirectory);
     const stateFile = path.join(cfg.outputDirectory, '.flowfree-image-state.json');
     const state = await loadState(stateFile);
+    const failures = [];
     await fs.mkdir(cfg.outputDirectory, { recursive: true });
     for (const item of items) {
       if (this.cancelled) break;
@@ -68,9 +69,15 @@ export class BatchRunner {
           lastError = null; break;
         } catch (e) { lastError = e; this.emit({type:'retry',item,attempt,error:String(e?.message||e)}); }
       }
-      if (lastError) throw lastError;
+      if (lastError) {
+        state.jobs[key] = { ...state.jobs[key], status: 'failed', error: String(lastError?.message || lastError), prompt: item.prompt, updatedAt: new Date().toISOString() };
+        await saveState(stateFile, state);
+        failures.push({ id: key, error: String(lastError?.message || lastError) });
+        this.emit({ type:'failed', item, error:String(lastError?.message || lastError) });
+      }
+      if (cfg.delaySeconds > 0) await new Promise((resolve) => setTimeout(resolve, cfg.delaySeconds * 1_000));
     }
-    return { ok: !this.cancelled, total: items.length, stateFile };
+    return { ok: !this.cancelled && failures.length === 0, total: items.length, failures, stateFile };
   }
 
   async runVideoBatch(cfg) {
