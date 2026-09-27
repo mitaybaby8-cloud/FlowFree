@@ -24,7 +24,7 @@ The current `flow_generate_image` schema accepts model, plain ratio, output coun
 | Refresh account | IMPLEMENTED | Yes | Partial | Relaunches the saved managed profile and verifies the current Flow project URL plus a visible prompt. This avoids the pinned engine's legacy `labs.google` redirect and diagnostic screenshot failure. |
 | Disconnect | BLOCKED | No | No | Engine 0.2.3 has no public disconnect/remove tool. |
 | Image model/ratio/resolution UI | IMPLEMENTED | Yes | No | Uses documented keys. Options remain editable for queue configuration when live capabilities are unavailable; generation remains gated separately. |
-| Image generation | IMPLEMENTED | Yes | No | Uses live model/ratio capabilities and Flow-default resolution. Explicit 1K/2K/4K remain disabled because the engine has no verified image-resolution field. |
+| Image generation | IMPLEMENTED | Yes | No | Runs after workspace verification at Flow-default resolution. The engine validates model/ratio against the live UI before prompt submission; explicit 1K/2K/4K remain disabled because no verified image-resolution field exists. |
 | Batch prompts | IMPLEMENTED | Yes | No | Multi-line parser and TXT import. |
 | Reference common | IMPLEMENTED | Yes | No | Local paths only. |
 | Reference per-row | IMPLEMENTED | Yes | No | Manual picker per row. |

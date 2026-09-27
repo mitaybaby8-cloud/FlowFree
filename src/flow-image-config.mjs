@@ -31,8 +31,11 @@ export function assessImageEngineCompatibility(capabilities = {}) {
 
   // google-flow-mcp 0.2.3 generates at the resolution selected/defaulted by Flow.
   // It has no explicit image resolution field, so 1K/2K/4K stay unavailable.
-  const generationEnabled = Boolean(capabilities.workspaceAvailable) && models.size > 0 && ratios.size > 0;
-  if (!generationEnabled) reasons.push('Chưa có đủ capability live để chạy generation.');
+  // The engine validates the requested model and ratio against the live Flow UI
+  // during configureGeneration, before it fills/submits the prompt. Capability
+  // discovery may be empty on the current flow.google.com shell, so it is a
+  // warning rather than a reason to disable Run after workspace verification.
+  const generationEnabled = Boolean(capabilities.workspaceAvailable);
 
   return {
     workspaceAvailable: Boolean(capabilities.workspaceAvailable),

@@ -158,7 +158,7 @@ function applyCapabilityOptions(capabilities) {
   const banner = $('#compatibilityBanner');
   banner.className = `banner ${compatibility.generationEnabled ? 'ready' : 'warning'}`;
   banner.textContent = compatibility.generationEnabled
-    ? 'Có thể chạy với độ phân giải mặc định của Flow. 1K/2K/4K chưa có API riêng.'
+    ? 'Có thể chạy với độ phân giải mặc định của Flow. Engine sẽ kiểm tra model/tỷ lệ trước khi submit.'
     : `Generation đang khóa an toàn — ${compatibility.reasons.join(' ')}`;
 
   const videoModels = capabilities.models?.video || [];
@@ -249,7 +249,7 @@ $('#pauseImages').onclick = () => { const hasPaused = imageQueue.some((item) => 
 $('#stopImages').onclick = () => { imageQueue = imageQueue.map((item) => ['WAITING', 'QUEUED', 'PAUSED'].includes(item.status) ? { ...item, status: 'CANCELLED' } : item); renderQueue(); };
 $('#retryErrors').onclick = () => { imageQueue = imageQueue.map((item) => item.status === 'FAILED' ? { ...item, status: 'QUEUED', retryCount: (item.retryCount || 0) + 1, error: '' } : item); renderQueue(); };
 $('#runImages').onclick = async () => {
-  if (!compatibility.generationEnabled) { setProgress('Generation bị khóa: chưa đọc được model/ratio live từ Flow.'); return; }
+  if (!compatibility.generationEnabled) { setProgress('Generation bị khóa: Flow workspace chưa được xác minh.'); return; }
   if (!accountId) { setProgress('Hãy kết nối Google trước.'); return; }
   if (!$('#imageOut').value) { setProgress('Hãy chọn output folder.'); return; }
   try {

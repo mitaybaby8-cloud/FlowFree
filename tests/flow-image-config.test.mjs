@@ -20,3 +20,10 @@ test('engine allows Flow-default image resolution when live controls are verifie
   assert.equal(result.usesFlowDefaultResolution, true);
   assert.equal(result.generationEnabled, true);
 });
+
+test('verified workspace can run because engine validates options before submit', () => {
+  const result = assessImageEngineCompatibility({ workspaceAvailable:true });
+  assert.equal(result.generationEnabled, true);
+  assert.equal(result.missingModels.length, 3);
+  assert.equal(result.missingRatios.length, 5);
+});
