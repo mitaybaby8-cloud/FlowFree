@@ -19,7 +19,7 @@ The current `flow_generate_image` schema accepts model, plain ratio, output coun
 
 | Feature | Status | Unit tested | Live tested | Notes |
 |---|---|---:|---:|---|
-| Login | UNIT TESTED | Yes | No | Uses the verified Chrome Flow Login Bridge. FlowFree polls for Session sent and automatically continues to the Google account chooser; helper installation is a one-time manual Chrome security step. |
+| Login | UNIT TESTED | Yes | No | Uses the verified Chrome Flow Login Bridge. The bundled helper is copied to a stable app-data folder; one button opens Chrome Extensions, reveals that folder, and copies its path. FlowFree then polls for Session sent and automatically continues to the Google chooser. |
 | Session restore | IMPLEMENTED | No | No | Engine persists account records and isolated Chromium profiles; app verifies workspace on launch. |
 | Refresh account | IMPLEMENTED | No | No | Calls list + live inspect; does not show connected for an unavailable workspace. |
 | Disconnect | BLOCKED | No | No | Engine 0.2.3 has no public disconnect/remove tool. |

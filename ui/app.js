@@ -208,9 +208,16 @@ $$('[data-dir]').forEach((button) => { button.onclick = async () => { const dire
 
 $('#connectBtn').onclick = beginConnect;
 $('#installHelper').onclick = async () => {
-  const result = await flowfree.invoke('open-extension');
-  $('#accountDetail').textContent = `Chrome đã mở trang Extensions. Bật Developer mode → Load unpacked → chọn thư mục: ${result.extensionPath}`;
-  if (result.chromeError || result.revealError) log(result.chromeError || result.revealError);
+  try {
+    const result = await flowfree.invoke('open-extension');
+    $('#accountText').textContent = 'Extension đã chuẩn bị sẵn';
+    $('#accountDetail').textContent = `Chrome Extensions và đúng thư mục đã mở. Bật Developer mode → Load unpacked → dán đường dẫn đã copy: ${result.extensionPath}`;
+    setProgress('Chỉ còn chọn Load unpacked trong Chrome');
+    if (result.chromeError) log(result.chromeError);
+  } catch (error) {
+    $('#accountDetail').textContent = `Không mở được extension: ${error.message}`;
+    setProgress('Chuẩn bị extension lỗi');
+  }
 };
 $('#refreshAccount').onclick = refreshAccount;
 $('#disconnectAccount').onclick = async () => { const result = await flowfree.invoke('disconnect-account'); log(result.reason); };

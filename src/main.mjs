@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, dialog, shell } from 'electron';
+import { app, BrowserWindow, clipboard, ipcMain, dialog, shell } from 'electron';
 import { execFile } from 'node:child_process';
 import fs from 'node:fs/promises';
 import path from 'node:path';
@@ -43,8 +43,12 @@ ipcMain.handle('pick-reference-folder', async()=> {
   return { directory, files };
 });
 ipcMain.handle('open-extension', async()=> {
-  const extensionPath = app.isPackaged ? path.join(process.resourcesPath, 'extension') : path.resolve(__dirname, '../extension');
-  const revealError = await shell.openPath(extensionPath);
+  const bundledExtensionPath = app.isPackaged ? path.join(process.resourcesPath, 'extension') : path.resolve(__dirname, '../extension');
+  const extensionPath = path.join(app.getPath('userData'), 'Flow Login Helper');
+  await fs.access(path.join(bundledExtensionPath, 'manifest.json'));
+  await fs.mkdir(extensionPath, { recursive: true });
+  await fs.cp(bundledExtensionPath, extensionPath, { recursive: true, force: true });
+  clipboard.writeText(extensionPath);
   let chromeError = '';
   try {
     if (process.platform === 'darwin') await execFileAsync('/usr/bin/open', ['-a', 'Google Chrome', 'chrome://extensions']);
@@ -52,7 +56,8 @@ ipcMain.handle('open-extension', async()=> {
   } catch (error) {
     chromeError = error.message;
   }
-  return { extensionPath, revealError, chromeError };
+  shell.showItemInFolder(path.join(extensionPath, 'manifest.json'));
+  return { extensionPath, copiedToClipboard: true, chromeError };
 });
 ipcMain.handle('accounts', ()=>engine.listAccounts());
 ipcMain.handle('connect-begin', (_,args)=>engine.beginAccountConnection(args||{}));
