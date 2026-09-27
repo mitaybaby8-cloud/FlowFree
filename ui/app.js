@@ -301,6 +301,7 @@ flowfree.onEvent((event) => {
     setProgress(event.message);
   }
   if (event.type === 'browser-opened') $('#accountText').textContent = 'Đăng nhập Google trong Chrome FlowFree';
+  if (event.type === 'authentication-required') $('#accountText').textContent = 'Google session chưa được chấp nhận';
   if (event.type === 'verifying') $('#accountText').textContent = 'Đang xác minh Flow workspace';
 });
 restoreLog();

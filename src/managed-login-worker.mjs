@@ -42,6 +42,7 @@ try {
 
   const deadline = Date.now() + timeoutMs;
   let lastUrl = '';
+  let lastAuthNoticeUrl = '';
   while (Date.now() < deadline) {
     if (page.isClosed()) throw new Error('Cửa sổ đăng nhập Google đã bị đóng trước khi Flow được xác minh.');
     const url = page.url();
@@ -49,7 +50,9 @@ try {
       lastUrl = url;
       emit('navigation', { url, message: /accounts\.google\.com/i.test(url) ? 'Đang chờ đăng nhập Google…' : 'Đang chờ Flow workspace…' });
     }
-    if (await workspaceAvailable(page)) {
+    const hasWorkspace = await workspaceAvailable(page);
+    const signedIn = hasWorkspace ? await flow.isSignedIn(page).catch(() => false) : false;
+    if (hasWorkspace && signedIn) {
       emit('verifying', { message: 'Đã thấy Flow workspace và ô prompt thật. Đang lưu session…' });
       let live = {};
       if (await flow.openAgentSettings(page).catch(() => false)) {
@@ -80,10 +83,16 @@ try {
         ...live
       };
       await store.markAccountConnected(accountId, true);
-      await store.setHeadlessAfterLogin(accountId, true);
+      // Keep the isolated FlowFree Chrome visible for now. The current Google
+      // session was rejected when the engine reopened the profile headlessly.
+      await store.setHeadlessAfterLogin(accountId, false);
       emit('complete', { accountId, capabilities, message: 'Google Flow đã kết nối và session được lưu.' });
       process.exitCode = 0;
       break;
+    }
+    if (hasWorkspace && !signedIn && lastAuthNoticeUrl !== url) {
+      lastAuthNoticeUrl = url;
+      emit('authentication-required', { url, message: 'Flow đã mở nhưng Google session chưa được chấp nhận. Hãy đăng nhập trong Chrome FlowFree.' });
     }
     await sleep(1_000);
   }
