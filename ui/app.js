@@ -3,6 +3,7 @@ const flowfree = window.flowfree || { invoke: async () => { throw new Error('Flo
 const $ = (selector) => document.querySelector(selector);
 const $$ = (selector) => [...document.querySelectorAll(selector)];
 const PROJECT_KEY = 'flowfree:glabs-port:project-v1';
+const LOG_KEY = 'flowfree:connection-log-v1';
 
 let accountId = '';
 let commonReferenceFiles = [];
@@ -13,8 +14,25 @@ let compatibility = { generationEnabled: false, reasons: ['Chưa kiểm tra engi
 
 function log(value) {
   const element = $('#log');
-  element.textContent += `[${new Date().toLocaleTimeString()}] ${typeof value === 'string' ? value : JSON.stringify(value)}\n`;
+  const line = `[${new Date().toLocaleString()}] ${typeof value === 'string' ? value : JSON.stringify(value)}`;
+  element.textContent += `${line}\n`;
   element.scrollTop = element.scrollHeight;
+  try {
+    const stored = JSON.parse(localStorage.getItem(LOG_KEY) || '[]');
+    const previous = Array.isArray(stored) ? stored : [];
+    localStorage.setItem(LOG_KEY, JSON.stringify([...previous, line].slice(-200)));
+  } catch {
+    localStorage.setItem(LOG_KEY, JSON.stringify([line]));
+  }
+}
+
+function restoreLog() {
+  try {
+    const lines = JSON.parse(localStorage.getItem(LOG_KEY) || '[]');
+    if (Array.isArray(lines)) $('#log').textContent = `${lines.slice(-200).join('\n')}${lines.length ? '\n' : ''}`;
+  } catch {
+    localStorage.removeItem(LOG_KEY);
+  }
 }
 
 function setProgress(text) { $('#progress').textContent = text; }
@@ -178,19 +196,23 @@ async function beginConnect() {
     const result = await flowfree.invoke('connect-begin', {});
     if (result.status === 'ALREADY_CONNECTED') return refreshAccount();
     $('#accountText').textContent = 'Đang chờ Gmail từ Chrome';
-    $('#accountDetail').textContent = 'Trong Chrome, bấm extension Flow Login Bridge rồi bấm Connect Flow. FlowFree sẽ tự tiếp tục.';
+    $('#accountDetail').textContent = 'Trong Chrome, bấm extension FlowFree Login Helper rồi bấm Connect Flow. FlowFree sẽ tự tiếp tục.';
     setProgress('Đang chờ bạn bấm Connect Flow trong Chrome…');
-    await flowfree.invoke('wait-login-bridge');
+    const bridgeStatus = await flowfree.invoke('wait-login-bridge');
+    log(`Login helper đã gửi session qua bridge ${bridgeStatus.port || 'không rõ cổng'}.`);
     setProgress('Đã nhận session. Hãy chọn Gmail trong cửa sổ Google…');
-    await flowfree.invoke('connect-complete', {
+    const completion = await flowfree.invoke('connect-complete', {
       connectionId: result.connectionId,
       userConfirmedSessionSent: true,
       chooseGoogleAccount: true,
       waitForAccountSelectionSeconds: 300
     });
+    log(completion);
     await refreshAccount();
   } catch (error) {
-    log(error.message);
+    $('#accountText').textContent = 'Kết nối Google thất bại';
+    $('#accountDetail').textContent = error.message;
+    log(`Kết nối Google thất bại: ${error.message}`);
     setProgress('Kết nối lỗi');
   } finally {
     $('#connectBtn').disabled = false;
@@ -234,6 +256,7 @@ $('#runImages').onclick = async () => { if (!compatibility.generationEnabled) { 
 $('#runVideos').onclick = () => setProgress('Video generation chưa được bật trong port này.');
 
 flowfree.onEvent((event) => { log(event); });
+restoreLog();
 restoreProject();
 renderQueue();
 refreshAccount();

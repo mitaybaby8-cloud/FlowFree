@@ -19,7 +19,7 @@ The current `flow_generate_image` schema accepts model, plain ratio, output coun
 
 | Feature | Status | Unit tested | Live tested | Notes |
 |---|---|---:|---:|---|
-| Login | UNIT TESTED | Yes | No | Uses the verified Chrome Flow Login Bridge. The bundled helper is copied to a stable app-data folder; one button opens Chrome Extensions, reveals that folder, and copies its path. FlowFree then polls for Session sent and automatically continues to the Google chooser. |
+| Login | UNIT TESTED | Yes | No | Helper 0.1.1 selects only the newest actively waiting bridge, re-scans at click time, reports port/cookie count/server errors, and refuses stale idle engines. FlowFree persists the last 200 diagnostic log lines and automatically continues to the Google chooser after Session sent. |
 | Session restore | IMPLEMENTED | No | No | Engine persists account records and isolated Chromium profiles; app verifies workspace on launch. |
 | Refresh account | IMPLEMENTED | No | No | Calls list + live inspect; does not show connected for an unavailable workspace. |
 | Disconnect | BLOCKED | No | No | Engine 0.2.3 has no public disconnect/remove tool. |
@@ -44,6 +44,6 @@ The current `flow_generate_image` schema accepts model, plain ratio, output coun
 
 ## Required next verification
 
-1. User connects a real Google account in FlowFree's managed login window.
+1. User reloads/installs bundled FlowFree Login Helper 0.1.1 in the signed-in Chrome profile, then connects a real Google account.
 2. Confirm restart restores the account and `flow_inspect_account` reports a real workspace.
 3. Decide how image `2K`/`4K` should be implemented using a public, verified engine contract. G-Labs documents its behavior but does not publish the desktop implementation/API used for that upscale path.
