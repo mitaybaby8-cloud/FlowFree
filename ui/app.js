@@ -141,10 +141,18 @@ async function chooseRowReference(index) {
 }
 
 function applyCapabilityOptions(capabilities) {
-  const liveModels = new Set((capabilities.models?.image || []).map((item) => item.id || item));
-  [...$('#imageModel').options].forEach((option) => { option.disabled = !liveModels.has(option.value); });
-  const liveRatios = new Set(capabilities.aspectRatiosByMedia?.image || []);
-  [...$('#imageRatio').options].forEach((option) => { option.disabled = !liveRatios.has(option.value); });
+  const modelOptions = capabilities.models?.image;
+  const hasLiveModels = Array.isArray(modelOptions) && modelOptions.length > 0;
+  const liveModels = new Set((modelOptions || []).map((item) => item.id || item));
+  [...$('#imageModel').options].forEach((option) => {
+    option.disabled = hasLiveModels && !liveModels.has(option.value);
+  });
+  const ratioOptions = capabilities.aspectRatiosByMedia?.image;
+  const hasLiveRatios = Array.isArray(ratioOptions) && ratioOptions.length > 0;
+  const liveRatios = new Set(ratioOptions || []);
+  [...$('#imageRatio').options].forEach((option) => {
+    option.disabled = hasLiveRatios && !liveRatios.has(option.value);
+  });
   compatibility = capabilities.phase1Compatibility || compatibility;
   $('#runImages').disabled = !compatibility.generationEnabled;
   const banner = $('#compatibilityBanner');

@@ -23,7 +23,7 @@ The current `flow_generate_image` schema accepts model, plain ratio, output coun
 | Session restore | IMPLEMENTED | Yes | No | On launch, FlowFree detects the saved managed account, relaunches its isolated Chromium profile and verifies the project URL plus visible prompt before reporting connected. An app restart live check is still required. |
 | Refresh account | IMPLEMENTED | Yes | Partial | Relaunches the saved managed profile and verifies the current Flow project URL plus a visible prompt. This avoids the pinned engine's legacy `labs.google` redirect and diagnostic screenshot failure. |
 | Disconnect | BLOCKED | No | No | Engine 0.2.3 has no public disconnect/remove tool. |
-| Image model/ratio/resolution UI | IMPLEMENTED | Yes | No | Uses documented keys; unavailable live model/ratio options are disabled. |
+| Image model/ratio/resolution UI | IMPLEMENTED | Yes | No | Uses documented keys. Options remain editable for queue configuration when live capabilities are unavailable; generation remains gated separately. |
 | Image generation | BLOCKED | Yes (gate) | No | Resolution/upscale image API is absent in engine 0.2.3. |
 | Batch prompts | IMPLEMENTED | Yes | No | Multi-line parser and TXT import. |
 | Reference common | IMPLEMENTED | Yes | No | Local paths only. |
