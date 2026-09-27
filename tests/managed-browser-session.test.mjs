@@ -48,11 +48,30 @@ test('keeps an existing visible managed Chrome session', async () => {
     dataDir,
     accountId: 'flowfree',
     WebSocketImpl: FakeWebSocket,
-    fetchImpl: async () => ({
+    fetchImpl: async (url) => ({
       ok: true,
-      json: async () => ({ 'User-Agent': 'Chrome/153', webSocketDebuggerUrl: 'ws://127.0.0.1:59440/devtools/browser/id' })
+      json: async () => url.endsWith('/json/list')
+        ? [{ type: 'page', url: 'https://flow.google.com/' }]
+        : { 'User-Agent': 'Chrome/153', webSocketDebuggerUrl: 'ws://127.0.0.1:59440/devtools/browser/id' }
     })
   });
   assert.equal(closed, false);
   await fs.access(path.join(dataDir, 'browser-sessions', 'flowfree.json'));
+});
+
+test('closes a visible managed Chrome process that has no remaining page context', async () => {
+  const dataDir = await sessionFixture();
+  const closed = await closeHiddenManagedSession({
+    dataDir,
+    accountId: 'flowfree',
+    WebSocketImpl: FakeWebSocket,
+    fetchImpl: async (url) => ({
+      ok: true,
+      json: async () => url.endsWith('/json/list')
+        ? []
+        : { 'User-Agent': 'Chrome/153', webSocketDebuggerUrl: 'ws://127.0.0.1:59440/devtools/browser/id' }
+    })
+  });
+  assert.equal(closed, true);
+  await assert.rejects(fs.access(path.join(dataDir, 'browser-sessions', 'flowfree.json')));
 });

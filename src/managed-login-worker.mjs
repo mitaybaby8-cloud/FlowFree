@@ -22,16 +22,29 @@ function sleep(milliseconds) {
 
 if (!engineDist) throw new Error('Engine dist directory is required.');
 
-const [{ FlowStore }, { BrowserManager }, { CookieBridge }, { FlowAdapter }] = await Promise.all([
+const [{ FlowStore }, { BrowserManager }, { CookieBridge }, { FlowAdapter }, { FLOW_URL }] = await Promise.all([
   import(pathToFileURL(path.join(engineDist, 'store.js')).href),
   import(pathToFileURL(path.join(engineDist, 'browser-manager.js')).href),
   import(pathToFileURL(path.join(engineDist, 'cookie-bridge.js')).href),
-  import(pathToFileURL(path.join(engineDist, 'flow-adapter.js')).href)
+  import(pathToFileURL(path.join(engineDist, 'flow-adapter.js')).href),
+  import(pathToFileURL(path.join(engineDist, 'types.js')).href)
 ]);
 
 const store = new FlowStore();
 await store.initialize();
 const browsers = new BrowserManager(store);
+let shuttingDown = false;
+async function shutdownForSignal() {
+  if (shuttingDown) return;
+  shuttingDown = true;
+  // The parent replaces an automatic verification worker with an explicit
+  // Connect worker. Close Chromium first so its isolated profile lock cannot
+  // make the replacement Chrome process exit successfully before CDP starts.
+  await browsers.closeAll().catch(() => undefined);
+  process.exit(143);
+}
+process.once('SIGTERM', shutdownForSignal);
+process.once('SIGINT', shutdownForSignal);
 FlowAdapter.prototype.promptLocator = function promptLocator(page) {
   return page.locator(FLOW_PROMPT_SELECTOR);
 };
@@ -44,6 +57,12 @@ try {
     emit('hidden-browser-closed', { accountId, message: 'Đã đóng phiên Chrome ẩn cũ; đang mở lại cửa sổ đăng nhập hiển thị.' });
   }
   const page = await browsers.pageFor(accountId);
+  // A previous worker can leave a valid shared Chrome process with no tabs
+  // after its app window is closed. BrowserManager attaches successfully but
+  // returns a fresh about:blank page, so explicitly restore Flow here.
+  if (!/^https:\/\/(?:labs\.google|flow\.google\.com)(?:\/|$)/i.test(page.url())) {
+    await page.goto(FLOW_URL, { waitUntil: 'domcontentloaded' });
+  }
   if (mode === 'connect') {
     await page.bringToFront().catch(() => undefined);
     if (process.platform === 'darwin') {

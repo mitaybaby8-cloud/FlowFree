@@ -184,9 +184,11 @@ async function refreshAccount() {
       return;
     }
     if (!accounts.readyForGeneration) {
-      $('#accountText').textContent = 'Đang khôi phục Google Flow';
-      $('#accountDetail').textContent = 'FlowFree đang kiểm tra session trong Chrome profile riêng…';
-      setProgress('Đang khôi phục session Flow…');
+      document.body.classList.remove('connected');
+      $('#accountText').textContent = 'Google Flow cần kết nối';
+      $('#accountDetail').textContent = 'Bấm Kết nối Google để mở Chrome profile riêng của FlowFree.';
+      setProgress('Cần kết nối Google');
+      return;
     }
     const capabilities = await flowfree.invoke('inspect', accountId);
     if (!capabilities.workspaceAvailable) throw new Error('Session có tồn tại nhưng Flow workspace chưa dùng được.');

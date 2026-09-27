@@ -48,7 +48,21 @@ export async function closeHiddenManagedSession({
   } catch {
     return false;
   }
-  if (!/HeadlessChrome/i.test(version['User-Agent'] || '')) return false;
+  let shouldClose = /HeadlessChrome/i.test(version['User-Agent'] || '');
+  if (!shouldClose) {
+    try {
+      const targetsResponse = await fetchImpl(`${session.endpoint}/json/list`, { signal: AbortSignal.timeout(2_000) });
+      const targets = targetsResponse.ok ? await targetsResponse.json() : null;
+      // Chrome can stay alive after its last app window closes. Such a process
+      // still owns the isolated profile but Playwright cannot attach to it
+      // because it exposes no browser context. Close only that empty managed
+      // process; never close a visible session that still has a page.
+      shouldClose = Array.isArray(targets) && !targets.some((target) => target?.type === 'page');
+    } catch {
+      return false;
+    }
+  }
+  if (!shouldClose) return false;
   if (!/^ws:\/\/127\.0\.0\.1:\d+\//.test(version.webSocketDebuggerUrl || '')) {
     throw new Error('Hidden FlowFree Chrome exposed an invalid debugger endpoint.');
   }
