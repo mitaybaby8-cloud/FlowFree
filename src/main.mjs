@@ -9,7 +9,6 @@ import { BatchRunner } from './batch-runner.mjs';
 import { waitForQueuedSession } from './bridge-login.mjs';
 import { assessImageEngineCompatibility } from './flow-image-config.mjs';
 import { buildImageQueue, isReferenceImage } from './image-queue.mjs';
-import { isDiagnosticScreenshotTimeout } from './flow-workspace.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const execFileAsync = promisify(execFile);
@@ -74,12 +73,12 @@ ipcMain.handle('accounts', ()=>engine.listAccounts());
 ipcMain.handle('connect-begin', (_,args)=>engine.beginAccountConnection(args||{}));
 ipcMain.handle('wait-login-bridge', ()=>waitForQueuedSession(()=>engine.loginBridgeStatus()));
 ipcMain.handle('connect-complete', (_,args)=>engine.completeAccountConnection(args));
-ipcMain.handle('connect-managed', async()=>{
+async function runManagedAccountWorker({ mode = 'connect', timeoutMs = 600_000 } = {}) {
   if (managedLoginWorker) throw new Error('Một cửa sổ kết nối Google đang chạy.');
   const engineDist = app.isPackaged ? path.join(process.resourcesPath, 'engine', 'dist') : path.resolve(__dirname, '../vendor/google-flow-mcp/dist');
   const workerPath = path.join(__dirname, 'managed-login-worker.mjs');
   return new Promise((resolve,reject)=>{
-    const child = spawn(process.execPath, [workerPath, engineDist, 'flowfree', '600000'], {
+    const child = spawn(process.execPath, [workerPath, engineDist, 'flowfree', String(timeoutMs), mode], {
       env: { ...process.env, ELECTRON_RUN_AS_NODE: '1', FLOW_MCP_HEADLESS: '0' },
       stdio: ['ignore', 'pipe', 'pipe']
     });
@@ -113,22 +112,11 @@ ipcMain.handle('connect-managed', async()=>{
       else reject(new Error(stderr.trim() || `Managed login worker stopped with code ${code}.`));
     });
   }).finally(()=>{ managedLoginWorker = null; });
-});
+}
+ipcMain.handle('connect-managed', ()=>runManagedAccountWorker());
 ipcMain.handle('inspect', async(_,accountId)=>{
-  let capabilities;
-  try {
-    capabilities = await engine.inspect(accountId);
-  } catch (error) {
-    if (!isDiagnosticScreenshotTimeout(error)) throw error;
-    const accounts = await engine.listAccounts();
-    if (!accounts.readyForGeneration || accounts.defaultAccountId !== accountId) throw error;
-    capabilities = {
-      signedIn: true,
-      workspaceAvailable: true,
-      pageKind: 'workspace',
-      inspectionWarning: 'Flow workspace đã xác minh; ảnh chẩn đoán của engine bị timeout.'
-    };
-  }
+  if (accountId !== 'flowfree') throw new Error(`Managed account không hợp lệ: ${accountId}`);
+  const { capabilities } = await runManagedAccountWorker({ mode: 'verify', timeoutMs: 30_000 });
   return { ...capabilities, phase1Compatibility: assessImageEngineCompatibility(capabilities) };
 });
 ipcMain.handle('prepare-image-queue', (_,cfg)=>buildImageQueue(cfg));

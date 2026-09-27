@@ -20,7 +20,7 @@ async function firstVisible(locator) {
 }
 
 export async function workspaceAvailable(page) {
-  if (isFlowWorkspaceUrl(page.url())) return true;
+  const projectUrl = isFlowWorkspaceUrl(page.url());
   const prompt = page.locator([
     'textarea[placeholder*="prompt" i]',
     'textarea[placeholder*="describe" i]',
@@ -28,13 +28,10 @@ export async function workspaceAvailable(page) {
     '[contenteditable="true"][data-placeholder*="prompt" i]',
     'textarea'
   ].join(', '));
-  if (await firstVisible(prompt)) return true;
+  const promptVisible = await firstVisible(prompt);
+  if (projectUrl) return promptVisible;
+  if (promptVisible && /^https:\/\/(?:labs\.google|flow\.google\.com)(?:\/|$)/i.test(page.url())) return true;
   if (await page.locator('a[href*="/tools/flow/project/"], a[href^="/project/"]').count().catch(() => 0)) return true;
   const createControls = page.locator('button').filter({ has: page.locator('i', { hasText: /^(add|add_2)$/ }) });
   return (await createControls.count().catch(() => 0)) > 0;
-}
-
-export function isDiagnosticScreenshotTimeout(error) {
-  const message = error instanceof Error ? error.message : String(error);
-  return /page\.screenshot:[\s\S]*timeout/i.test(message);
 }
