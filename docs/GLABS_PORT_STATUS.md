@@ -25,7 +25,7 @@ The current `flow_generate_image` schema accepts model, plain ratio, output coun
 | Login worker coordination | IMPLEMENTED | Yes | No | A manual Connect cancels automatic startup verification first; repeated clicks share one worker. FlowFree also detects and closes a stale shared `HeadlessChrome` session before opening the visible login browser. This exact hidden-session failure was confirmed from the live CDP endpoint on 2026-09-27. |
 | Disconnect | BLOCKED | No | No | Engine 0.2.3 has no public disconnect/remove tool. |
 | Image model/ratio/resolution UI | IMPLEMENTED | Yes | No | Uses documented keys. Options remain editable for queue configuration when live capabilities are unavailable; generation remains gated separately. |
-| Image generation | IMPLEMENTED | Yes | No | Runs after workspace verification at Flow-default resolution. The engine validates model/ratio against the live UI before prompt submission; explicit 1K/2K/4K remain disabled because no verified image-resolution field exists. |
+| Image generation | LIVE TESTED | Yes | Yes | A real Nano Banana 2 Lite 16:9 job completed on 2026-09-27. FlowFree submitted one prompt, tracked the same job ID, detected the returned `flow-content.google/image/...` asset and downloaded it. Explicit 1K/2K/4K remain disabled because no verified image-resolution field exists. |
 | Batch prompts | IMPLEMENTED | Yes | No | Multi-line parser and TXT import. |
 | Reference common | IMPLEMENTED | Yes | No | Local paths only. |
 | Reference per-row | IMPLEMENTED | Yes | No | Manual picker per row. |
@@ -36,7 +36,7 @@ The current `flow_generate_image` schema accepts model, plain ratio, output coun
 | Preview image | NOT STARTED | No | No | Requires real output and strict file validation. |
 | Retry | IMPLEMENTED | Yes | No | Retry-errors transition is present; execution remains gated. |
 | Resume | NOT STARTED | No | No | Requires durable atomic main-process queue state. |
-| Download | BLOCKED | No | No | Must be live-tested with exact engine job identity and real files. |
+| Download | LIVE TESTED | Yes | Yes | The live image job downloaded a real 27,429-byte JPEG at 1376×768. FlowFree now detects actual image bytes and converts downloads to a validated strict `001.png`; the live output was verified by `file` and `sips` as PNG 1376×768. |
 | Video | NOT STARTED | No | No | Legacy source retained but UI execution disabled during compatibility work. |
 | Start frame | NOT STARTED | No | No | Engine only exposes generic `referenceFiles[]`; role binding not verified. |
 | End frame | BLOCKED | No | No | No verified native end-frame parameter in engine 0.2.3. |

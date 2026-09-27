@@ -19,6 +19,24 @@ export const FLOW_PROMPT_SELECTOR = [
   '.ProseMirror[contenteditable="true"]'
 ].join(', ');
 
+export function flowSettingsSummaryMatches(summary, { model, aspectRatio, outputs }) {
+  const text = String(summary || '').replace(/\s+/g, ' ').trim();
+  const normalized = text.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+  const requestedModel = String(model || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+  const ratioIcons = {
+    '16:9': 'crop_16_9',
+    '4:3': 'crop_landscape',
+    '1:1': 'crop_square',
+    '3:4': 'crop_portrait',
+    '9:16': 'crop_9_16'
+  };
+  const modelMatches = !model || model === 'ui-default' || normalized.includes(requestedModel);
+  const ratioIcon = ratioIcons[aspectRatio];
+  const ratioMatches = !aspectRatio || aspectRatio === 'ui-default' || text.includes(aspectRatio) || Boolean(ratioIcon && text.includes(ratioIcon));
+  const outputMatches = new RegExp(`(?:^|\\s)x${outputs}(?:\\s|$)`, 'i').test(text);
+  return modelMatches && ratioMatches && outputMatches;
+}
+
 export function parseVisibleFlowSelections(text) {
   const value = String(text || '');
   const modelLabels = [...value.matchAll(/Nano Banana (?:Pro|2 Lite|2)(?!\s*Lite)/gi)].map((match) => match[0]);

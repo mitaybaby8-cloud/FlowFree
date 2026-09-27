@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { FLOW_PROMPT_SELECTOR, isFlowWorkspaceUrl, parseVisibleFlowSelections, workspaceAvailable } from '../src/flow-workspace.mjs';
+import { FLOW_PROMPT_SELECTOR, flowSettingsSummaryMatches, isFlowWorkspaceUrl, parseVisibleFlowSelections, workspaceAvailable } from '../src/flow-workspace.mjs';
 
 test('recognizes both legacy and current Google Flow project URLs', () => {
   assert.equal(isFlowWorkspaceUrl('https://labs.google/fx/tools/flow/project/abc'), true);
@@ -30,4 +30,11 @@ test('reads only the model and ratio visibly selected in the Flow prompt box', (
   const result = parseVisibleFlowSelections('Tác nhân\n🍌 Nano Banana 2 Lite\ncrop_16_9\nx2');
   assert.deepEqual(result.models, [{ id:'nano-banana-2-lite', label:'Nano Banana 2 Lite', selected:true }]);
   assert.deepEqual(result.ratios, ['16:9']);
+});
+
+test('recognizes the current Flow settings summary for an explicit app request', () => {
+  const summary = '🍌 Nano Banana 2 Lite\ncrop_16_9\nx1';
+  assert.equal(flowSettingsSummaryMatches(summary, { model:'nano-banana-2-lite', aspectRatio:'16:9', outputs:1 }), true);
+  assert.equal(flowSettingsSummaryMatches(summary, { model:'nano-banana-pro', aspectRatio:'16:9', outputs:1 }), false);
+  assert.equal(flowSettingsSummaryMatches(summary, { model:'nano-banana-2-lite', aspectRatio:'1:1', outputs:1 }), false);
 });

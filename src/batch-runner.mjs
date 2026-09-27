@@ -1,5 +1,6 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
+import { normalizeImageToPng } from './image-output.mjs';
 
 export function padIndex(index, width = 3) { return String(index).padStart(width, '0'); }
 
@@ -64,7 +65,8 @@ export class BatchRunner {
           await saveState(stateFile, state);
           if (job?.status !== 'completed') throw new Error(job?.error || `Image job ${key} ended with ${job?.status}`);
           const src = job.downloadedFiles?.[0];
-          if (src && src !== item.imageFile) await fs.copyFile(src, item.imageFile);
+          if (!src) throw new Error(`Image job ${key} completed without a downloaded file.`);
+          if (src !== item.imageFile) await normalizeImageToPng(src, item.imageFile);
           this.emit({type:'done',item,job});
           lastError = null; break;
         } catch (e) { lastError = e; this.emit({type:'retry',item,attempt,error:String(e?.message||e)}); }
