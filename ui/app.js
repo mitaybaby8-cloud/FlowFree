@@ -209,8 +209,6 @@ async function refreshAccount() {
 async function beginConnect() {
   try {
     $('#connectBtn').disabled = true;
-    const accounts = await flowfree.invoke('accounts');
-    if (accounts.readyForGeneration && accounts.defaultAccountId) return refreshAccount();
     $('#accountText').textContent = 'Đang mở Google Flow';
     $('#accountDetail').textContent = 'Hãy đăng nhập trực tiếp trong cửa sổ Chrome riêng của FlowFree. Không cần extension.';
     setProgress('Đang mở Chrome riêng của FlowFree…');

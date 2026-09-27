@@ -1,7 +1,11 @@
 import path from 'node:path';
+import { execFile } from 'node:child_process';
 import { pathToFileURL } from 'node:url';
+import { promisify } from 'node:util';
 import { FLOW_PROMPT_SELECTOR, parseVisibleFlowSelections, workspaceAvailable } from './flow-workspace.mjs';
 import { closeHiddenManagedSession } from './managed-browser-session.mjs';
+
+const execFileAsync = promisify(execFile);
 
 const engineDist = process.argv[2];
 const accountId = process.argv[3] || 'flowfree';
@@ -40,6 +44,12 @@ try {
     emit('hidden-browser-closed', { accountId, message: 'Đã đóng phiên Chrome ẩn cũ; đang mở lại cửa sổ đăng nhập hiển thị.' });
   }
   const page = await browsers.pageFor(accountId);
+  if (mode === 'connect') {
+    await page.bringToFront().catch(() => undefined);
+    if (process.platform === 'darwin') {
+      await execFileAsync('/usr/bin/open', ['-a', 'Google Chrome']).catch(() => undefined);
+    }
+  }
   emit('browser-opened', {
     accountId,
     message: mode === 'connect'
