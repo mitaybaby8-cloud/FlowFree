@@ -19,9 +19,9 @@ The current `flow_generate_image` schema accepts model, plain ratio, output coun
 
 | Feature | Status | Unit tested | Live tested | Notes |
 |---|---|---:|---:|---|
-| Login | IMPLEMENTED | No | No | Primary login now opens the engine's persistent managed Chrome profile. The user signs in directly once; FlowFree does not read/copy cookies from a personal Chrome profile. The older helper source remains as a non-UI fallback until managed login is live-tested. |
-| Session restore | IMPLEMENTED | No | No | Engine persists account records and isolated Chromium profiles; app verifies workspace on launch. |
-| Refresh account | IMPLEMENTED | No | No | Calls list + live inspect; does not show connected for an unavailable workspace. |
+| Login | IMPLEMENTED | Yes | Partial | Primary login opens the engine's persistent managed Chrome profile. A real login reached `https://flow.google.com/project/...` with a visible prompt on 2026-09-27. FlowFree does not read/copy cookies from a personal Chrome profile. End-to-end completion after the domain compatibility fix still needs an app restart check. |
+| Session restore | IMPLEMENTED | Yes | No | Engine persists account records and the isolated Chromium profile. The saved session exists, but automatic restore through the updated worker still needs an app restart check. |
+| Refresh account | IMPLEMENTED | Yes | Partial | Calls list + live inspect. A real inspect reached the workspace but the engine's diagnostic screenshot timed out; FlowFree now preserves the verified login result for that specific non-auth failure. |
 | Disconnect | BLOCKED | No | No | Engine 0.2.3 has no public disconnect/remove tool. |
 | Image model/ratio/resolution UI | IMPLEMENTED | Yes | No | Uses documented keys; unavailable live model/ratio options are disabled. |
 | Image generation | BLOCKED | Yes (gate) | No | Resolution/upscale image API is absent in engine 0.2.3. |
@@ -44,6 +44,6 @@ The current `flow_generate_image` schema accepts model, plain ratio, output coun
 
 ## Required next verification
 
-1. User clicks Connect Google and signs in directly in FlowFree's managed Chrome profile; verify the live Flow workspace is detected.
-2. Confirm restart restores the account and `flow_inspect_account` reports a real workspace.
+1. Restart FlowFree with the updated source and confirm the saved managed profile is recognized automatically on `flow.google.com/project/...`.
+2. Confirm a second restart restores the account without another Google login.
 3. Decide how image `2K`/`4K` should be implemented using a public, verified engine contract. G-Labs documents its behavior but does not publish the desktop implementation/API used for that upscale path.

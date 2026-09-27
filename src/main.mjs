@@ -9,6 +9,7 @@ import { BatchRunner } from './batch-runner.mjs';
 import { waitForQueuedSession } from './bridge-login.mjs';
 import { assessImageEngineCompatibility } from './flow-image-config.mjs';
 import { buildImageQueue, isReferenceImage } from './image-queue.mjs';
+import { isDiagnosticScreenshotTimeout } from './flow-workspace.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const execFileAsync = promisify(execFile);
@@ -114,7 +115,20 @@ ipcMain.handle('connect-managed', async()=>{
   }).finally(()=>{ managedLoginWorker = null; });
 });
 ipcMain.handle('inspect', async(_,accountId)=>{
-  const capabilities = await engine.inspect(accountId);
+  let capabilities;
+  try {
+    capabilities = await engine.inspect(accountId);
+  } catch (error) {
+    if (!isDiagnosticScreenshotTimeout(error)) throw error;
+    const accounts = await engine.listAccounts();
+    if (!accounts.readyForGeneration || accounts.defaultAccountId !== accountId) throw error;
+    capabilities = {
+      signedIn: true,
+      workspaceAvailable: true,
+      pageKind: 'workspace',
+      inspectionWarning: 'Flow workspace đã xác minh; ảnh chẩn đoán của engine bị timeout.'
+    };
+  }
   return { ...capabilities, phase1Compatibility: assessImageEngineCompatibility(capabilities) };
 });
 ipcMain.handle('prepare-image-queue', (_,cfg)=>buildImageQueue(cfg));

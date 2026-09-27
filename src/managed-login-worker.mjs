@@ -1,5 +1,6 @@
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { isDiagnosticScreenshotTimeout, workspaceAvailable } from './flow-workspace.mjs';
 
 const engineDist = process.argv[2];
 const accountId = process.argv[3] || 'flowfree';
@@ -11,29 +12,6 @@ function emit(type, payload = {}) {
 
 function sleep(milliseconds) {
   return new Promise((resolve) => setTimeout(resolve, milliseconds));
-}
-
-async function firstVisible(locator) {
-  const count = await locator.count().catch(() => 0);
-  for (let index = 0; index < count; index += 1) {
-    if (await locator.nth(index).isVisible().catch(() => false)) return true;
-  }
-  return false;
-}
-
-async function workspaceAvailable(page) {
-  if (/\/tools\/flow\/project\//i.test(page.url())) return true;
-  const prompt = page.locator([
-    'textarea[placeholder*="prompt" i]',
-    'textarea[placeholder*="describe" i]',
-    '[contenteditable="true"][role="textbox"]',
-    '[contenteditable="true"][data-placeholder*="prompt" i]',
-    'textarea'
-  ].join(', '));
-  if (await firstVisible(prompt)) return true;
-  if (await page.locator('a[href*="/tools/flow/project/"]').count().catch(() => 0)) return true;
-  const createControls = page.locator('button').filter({ has: page.locator('i', { hasText: /^add_2$/ }) });
-  return (await createControls.count().catch(() => 0)) > 0;
 }
 
 if (!engineDist) throw new Error('Engine dist directory is required.');
@@ -67,7 +45,19 @@ try {
     }
     if (await workspaceAvailable(page)) {
       emit('verifying', { message: 'Đã thấy Flow workspace. Đang xác minh account…' });
-      const capabilities = await flow.inspect(accountId);
+      let capabilities;
+      try {
+        capabilities = await flow.inspect(accountId);
+      } catch (error) {
+        if (!isDiagnosticScreenshotTimeout(error)) throw error;
+        capabilities = {
+          url: page.url(),
+          signedIn: true,
+          workspaceAvailable: true,
+          pageKind: 'workspace',
+          inspectionWarning: 'Flow workspace đã xác minh; ảnh chẩn đoán của engine bị timeout.'
+        };
+      }
       if (!capabilities.workspaceAvailable) throw new Error('Flow workspace xuất hiện nhưng engine không xác minh được.');
       await store.markAccountConnected(accountId, true);
       await store.setHeadlessAfterLogin(accountId, true);
