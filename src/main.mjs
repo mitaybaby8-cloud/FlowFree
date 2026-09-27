@@ -9,10 +9,11 @@ import { BatchRunner } from './batch-runner.mjs';
 import { waitForQueuedSession } from './bridge-login.mjs';
 import { assessImageEngineCompatibility } from './flow-image-config.mjs';
 import { buildImageQueue, isReferenceImage } from './image-queue.mjs';
+import { ManagedLoginCoordinator } from './managed-login-coordinator.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const execFileAsync = promisify(execFile);
-let win, engine, runner, managedLoginWorker;
+let win, engine, runner;
 
 const singleInstance = app.requestSingleInstanceLock();
 if (!singleInstance) app.quit();
@@ -35,7 +36,7 @@ app.whenReady().then(async()=>{
   engine = new FlowEngineClient({ engineEntry });
   await makeWindow();
 });
-app.on('window-all-closed', async()=>{ managedLoginWorker?.kill(); await engine?.close().catch(()=>{}); if(process.platform!=='darwin') app.quit(); });
+app.on('window-all-closed', async()=>{ managedLoginCoordinator.stop(); await engine?.close().catch(()=>{}); if(process.platform!=='darwin') app.quit(); });
 app.on('activate', ()=>{ if(BrowserWindow.getAllWindows().length===0) makeWindow(); });
 
 ipcMain.handle('pick-directory', async()=> (await dialog.showOpenDialog(win,{properties:['openDirectory','createDirectory']})).filePaths[0] || '');
@@ -73,16 +74,15 @@ ipcMain.handle('accounts', ()=>engine.listAccounts());
 ipcMain.handle('connect-begin', (_,args)=>engine.beginAccountConnection(args||{}));
 ipcMain.handle('wait-login-bridge', ()=>waitForQueuedSession(()=>engine.loginBridgeStatus()));
 ipcMain.handle('connect-complete', (_,args)=>engine.completeAccountConnection(args));
-async function runManagedAccountWorker({ mode = 'connect', timeoutMs = 600_000 } = {}) {
-  if (managedLoginWorker) throw new Error('Một cửa sổ kết nối Google đang chạy.');
+function startManagedAccountWorker(mode, { timeoutMs = 600_000 } = {}) {
   const engineDist = app.isPackaged ? path.join(process.resourcesPath, 'engine', 'dist') : path.resolve(__dirname, '../vendor/google-flow-mcp/dist');
   const workerPath = path.join(__dirname, 'managed-login-worker.mjs');
-  return new Promise((resolve,reject)=>{
-    const child = spawn(process.execPath, [workerPath, engineDist, 'flowfree', String(timeoutMs), mode], {
+  let child;
+  const promise = new Promise((resolve,reject)=>{
+    child = spawn(process.execPath, [workerPath, engineDist, 'flowfree', String(timeoutMs), mode], {
       env: { ...process.env, ELECTRON_RUN_AS_NODE: '1', FLOW_MCP_HEADLESS: '0' },
       stdio: ['ignore', 'pipe', 'pipe']
     });
-    managedLoginWorker = child;
     let stdoutBuffer = '';
     let stderr = '';
     let completed;
@@ -107,16 +107,17 @@ async function runManagedAccountWorker({ mode = 'connect', timeoutMs = 600_000 }
     child.once('error',(error)=>reject(error));
     child.once('exit',(code)=>{
       if (stdoutBuffer) handleLine(stdoutBuffer);
-      managedLoginWorker = null;
       if (code === 0 && completed) resolve(completed);
       else reject(new Error(stderr.trim() || `Managed login worker stopped with code ${code}.`));
     });
-  }).finally(()=>{ managedLoginWorker = null; });
+  });
+  return { child, promise };
 }
-ipcMain.handle('connect-managed', ()=>runManagedAccountWorker());
+const managedLoginCoordinator = new ManagedLoginCoordinator(startManagedAccountWorker);
+ipcMain.handle('connect-managed', ()=>managedLoginCoordinator.run('connect', { timeoutMs: 600_000 }));
 ipcMain.handle('inspect', async(_,accountId)=>{
   if (accountId !== 'flowfree') throw new Error(`Managed account không hợp lệ: ${accountId}`);
-  const { capabilities } = await runManagedAccountWorker({ mode: 'verify', timeoutMs: 30_000 });
+  const { capabilities } = await managedLoginCoordinator.run('verify', { timeoutMs: 30_000 });
   return { ...capabilities, phase1Compatibility: assessImageEngineCompatibility(capabilities) };
 });
 ipcMain.handle('prepare-image-queue', (_,cfg)=>buildImageQueue(cfg));
