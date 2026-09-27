@@ -1,5 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import fs from 'node:fs/promises';
+import os from 'node:os';
+import path from 'node:path';
 import { buildGflowImageCommand, GflowCliClient } from '../src/gflow-cli-client.mjs';
 
 test('maps FlowFree image model keys to verified gflow-cli aliases', () => {
@@ -37,4 +40,12 @@ test('isolates gflow profile, Python and uv environment under FlowFree data', ()
   assert.deepEqual(client.uvArgs(['auth', 'status']), [
     'run', '--project', '/app/gflow-cli', '--python', '3.13', '--no-dev', 'gflow', 'auth', 'status'
   ]);
+});
+
+test('marks the generation profile for system Chrome to prevent Chromium downgrade', async () => {
+  const dataDir = await fs.mkdtemp(path.join(os.tmpdir(), 'flowfree-gflow-'));
+  const client = new GflowCliClient({ projectDir: '/app/gflow-cli', dataDir, uvExecutable: '/uv' });
+  const profileDir = await client.ensureChromeGenerationProfile();
+  assert.equal(profileDir, path.join(dataDir, 'gflow', 'profile_flowfree'));
+  assert.equal(await fs.readFile(path.join(profileDir, '.gflow_browser_strategy'), 'utf8'), 'chrome\n');
 });

@@ -51,6 +51,13 @@ export class GflowCliClient {
     return ['run', '--project', this.projectDir, '--python', '3.13', '--no-dev', 'gflow', ...args];
   }
 
+  async ensureChromeGenerationProfile() {
+    const profileDir = path.join(this.dataDir, 'gflow', 'profile_flowfree');
+    await fs.mkdir(profileDir, { recursive: true });
+    await fs.writeFile(path.join(profileDir, '.gflow_browser_strategy'), 'chrome\n', { encoding: 'utf8', mode: 0o600 });
+    return profileDir;
+  }
+
   run(args, { allowExitCodes = [0], onLine } = {}) {
     return new Promise((resolve, reject) => {
       const child = spawn(this.uvExecutable, this.uvArgs(args), {
@@ -128,6 +135,7 @@ export class GflowCliClient {
   async generateImage(request) {
     const outputFile = path.join(request.outputDirectory, `${request.fileName}.png`);
     await fs.mkdir(request.outputDirectory, { recursive: true });
+    await this.ensureChromeGenerationProfile();
     const args = buildGflowImageCommand(request, outputFile);
     await this.run(args, { onLine: (line, stream) => this.emit({ channel: 'gflow-cli', type: stream, message: line }) });
     const stat = await fs.stat(outputFile).catch(() => null);
