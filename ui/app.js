@@ -164,13 +164,19 @@ async function refreshAccount() {
     const accounts = await flowfree.invoke('accounts');
     const connected = accounts.connectedAccountIds || [];
     $('#metricAccounts').textContent = connected.length;
-    accountId = accounts.defaultAccountId || '';
-    if (!accounts.readyForGeneration || !accountId) {
+    const savedManagedAccount = (accounts.accounts || []).find((item) => item.id === 'flowfree' && item.browserMode === 'managed');
+    accountId = accounts.defaultAccountId || savedManagedAccount?.id || '';
+    if (!accountId) {
       document.body.classList.remove('connected');
       $('#accountText').textContent = 'Chưa có Flow account hoạt động';
       $('#accountDetail').textContent = accounts.agentInstruction || 'Hãy kết nối Google.';
       setProgress('Cần kết nối Google');
       return;
+    }
+    if (!accounts.readyForGeneration) {
+      $('#accountText').textContent = 'Đang khôi phục Google Flow';
+      $('#accountDetail').textContent = 'FlowFree đang kiểm tra session trong Chrome profile riêng…';
+      setProgress('Đang khôi phục session Flow…');
     }
     const capabilities = await flowfree.invoke('inspect', accountId);
     if (!capabilities.workspaceAvailable) throw new Error('Session có tồn tại nhưng Flow workspace chưa dùng được.');

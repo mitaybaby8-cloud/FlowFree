@@ -20,7 +20,7 @@ The current `flow_generate_image` schema accepts model, plain ratio, output coun
 | Feature | Status | Unit tested | Live tested | Notes |
 |---|---|---:|---:|---|
 | Login | IMPLEMENTED | Yes | Partial | Primary login opens the engine's persistent managed Chrome profile. A real login reached `https://flow.google.com/project/...` with a visible prompt on 2026-09-27. FlowFree does not read/copy cookies from a personal Chrome profile. End-to-end completion after the domain compatibility fix still needs an app restart check. |
-| Session restore | IMPLEMENTED | Yes | No | Engine persists account records and the isolated Chromium profile. The saved session exists, but automatic restore through the updated worker still needs an app restart check. |
+| Session restore | IMPLEMENTED | Yes | No | On launch, FlowFree detects the saved managed account, relaunches its isolated Chromium profile and verifies the project URL plus visible prompt before reporting connected. An app restart live check is still required. |
 | Refresh account | IMPLEMENTED | Yes | Partial | Relaunches the saved managed profile and verifies the current Flow project URL plus a visible prompt. This avoids the pinned engine's legacy `labs.google` redirect and diagnostic screenshot failure. |
 | Disconnect | BLOCKED | No | No | Engine 0.2.3 has no public disconnect/remove tool. |
 | Image model/ratio/resolution UI | IMPLEMENTED | Yes | No | Uses documented keys; unavailable live model/ratio options are disabled. |
