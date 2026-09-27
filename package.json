@@ -1,0 +1,76 @@
+{
+  "name": "flowfree",
+  "version": "0.1.1",
+  "private": true,
+  "type": "module",
+  "description": "Mac ARM64 desktop wrapper for miyakejima/google-flow-mcp with batch image/video orchestration.",
+  "main": "src/main.mjs",
+  "scripts": {
+    "dev": "electron .",
+    "test": "node --test tests/*.test.mjs",
+    "check": "node --check src/main.mjs && node --check src/preload.cjs && node --check src/engine-client.mjs && node --check src/batch-runner.mjs && node --check ui/app.js && npm test",
+    "vendor:engine": "bash scripts/vendor-engine.sh",
+    "build:mac": "electron-builder --mac dmg zip --arm64"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.29.0"
+  },
+  "devDependencies": {
+    "electron": "^38.0.0",
+    "electron-builder": "^26.0.12"
+  },
+  "build": {
+    "appId": "com.flowfree.desktop",
+    "productName": "FlowFree",
+    "asar": true,
+    "files": [
+      "src/**/*",
+      "ui/**/*",
+      "package.json"
+    ],
+    "extraMetadata": {
+      "main": "src/main.mjs"
+    },
+    "mac": {
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "arm64"
+          ]
+        },
+        {
+          "target": "zip",
+          "arch": [
+            "arm64"
+          ]
+        }
+      ],
+      "category": "public.app-category.graphics-design",
+      "artifactName": "FlowFree-${version}-mac-arm64.${ext}",
+      "identity": null
+    },
+    "extraResources": [
+      {
+        "from": "extension",
+        "to": "extension"
+      },
+      {
+        "from": "vendor/google-flow-mcp/dist",
+        "to": "engine/dist"
+      },
+      {
+        "from": "vendor/google-flow-mcp/extension",
+        "to": "engine/extension"
+      },
+      {
+        "from": "vendor/google-flow-mcp/node_modules",
+        "to": "engine/node_modules"
+      },
+      {
+        "from": "vendor/google-flow-mcp/package.json",
+        "to": "engine/package.json"
+      }
+    ]
+  }
+}
