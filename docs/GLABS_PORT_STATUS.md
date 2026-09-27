@@ -13,6 +13,12 @@ Status values: `NOT STARTED`, `IMPLEMENTED`, `UNIT TESTED`, `LIVE TESTED`, `BLOC
 
 ## Verified API boundary
 
+### Engine migration in progress (2026-09-27)
+
+The app integration now targets the vendored MIT-licensed `ffroliva/gflow-cli` 0.79.1 source instead of calling `google-flow-mcp` 0.2.3 for login and image generation. The old engine remains in the tree until the replacement passes live login and image generation on this Mac. The new adapter has offline coverage for model aliases, strict output paths, per-job multi-reference arguments and isolated runtime/profile directories.
+
+`gflow-cli` itself was installed from the vendored source under Python 3.13 and its real `auth status` command was executed successfully. No FlowFree gflow profile exists yet, so login and generation are correctly recorded as **NOT LIVE TESTED** for the replacement engine until the user completes the one-time Google sign-in.
+
 The current engine verifies persistent account profiles and exposes `flow_list_accounts`, `flow_begin_account_connection`, `flow_complete_account_connection`, `flow_inspect_account`, `flow_generate_image`, `flow_generate_video`, `flow_job_status`, and `flow_download_job`.
 
 The current `flow_generate_image` schema accepts model, plain ratio, output count and reference file paths. FlowFree can now run that verified path using Flow's own default image resolution. It does **not** translate the G-Labs image `1K`/`2K`/`4K` values because the engine exposes no explicit image resolution field. The engine also exposes no disconnect/remove-account tool.
@@ -45,6 +51,6 @@ The current `flow_generate_image` schema accepts model, plain ratio, output coun
 
 ## Required next verification
 
-1. Grant Codex macOS Accessibility/Screen Recording access, restart FlowFree with the updated source and verify the actual Connect and RUN buttons end to end. The reproducible backend gate is `npm run e2e:image`, which uses the same `BatchRunner` as RUN and validates a strict non-empty `001.png`.
+1. Complete the one-time `gflow-cli` Chrome login for profile `flowfree`, then verify the actual Connect and RUN buttons end to end. The replacement does not read or copy cookies from the user's personal Chrome profile.
 2. Confirm a second restart restores the account without another Google login.
 3. Decide how image `2K`/`4K` should be implemented using a public, verified engine contract. G-Labs documents its behavior but does not publish the desktop implementation/API used for that upscale path.

@@ -4,7 +4,10 @@
 
 # Dependencies and vendored engine
 node_modules/
-vendor/
+vendor/*
+!vendor/gflow-cli/
+vendor/gflow-cli/.venv/
+vendor/gflow-cli/tmp/
 
 # Generated builds and installers
 dist/

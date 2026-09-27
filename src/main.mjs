@@ -1,15 +1,13 @@
 import { app, BrowserWindow, clipboard, ipcMain, dialog, shell } from 'electron';
-import { execFile, spawn } from 'node:child_process';
+import { execFile } from 'node:child_process';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { promisify } from 'node:util';
 import { fileURLToPath } from 'node:url';
-import { FlowEngineClient } from './engine-client.mjs';
+import { GflowCliClient } from './gflow-cli-client.mjs';
 import { BatchRunner } from './batch-runner.mjs';
-import { waitForQueuedSession } from './bridge-login.mjs';
 import { assessImageEngineCompatibility } from './flow-image-config.mjs';
 import { buildImageQueue, isReferenceImage } from './image-queue.mjs';
-import { ManagedLoginCoordinator } from './managed-login-coordinator.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const execFileAsync = promisify(execFile);
@@ -32,11 +30,11 @@ async function makeWindow(){
 
 app.whenReady().then(async()=>{
   if (!singleInstance) return;
-  const engineEntry = app.isPackaged ? path.join(process.resourcesPath, 'engine', 'dist', 'index.js') : undefined;
-  engine = new FlowEngineClient({ engineEntry });
+  const gflowProject = app.isPackaged ? path.join(process.resourcesPath, 'gflow-cli') : path.resolve(__dirname, '../vendor/gflow-cli');
+  engine = new GflowCliClient({ projectDir:gflowProject, dataDir:app.getPath('userData'), emit:send });
   await makeWindow();
 });
-app.on('window-all-closed', async()=>{ managedLoginCoordinator.stop(); await engine?.close().catch(()=>{}); if(process.platform!=='darwin') app.quit(); });
+app.on('window-all-closed', async()=>{ await engine?.close().catch(()=>{}); if(process.platform!=='darwin') app.quit(); });
 app.on('activate', ()=>{ if(BrowserWindow.getAllWindows().length===0) makeWindow(); });
 
 ipcMain.handle('pick-directory', async()=> (await dialog.showOpenDialog(win,{properties:['openDirectory','createDirectory']})).filePaths[0] || '');
@@ -71,60 +69,19 @@ ipcMain.handle('open-extension', async()=> {
   return { extensionPath, copiedToClipboard: true, chromeError };
 });
 ipcMain.handle('accounts', ()=>engine.listAccounts());
-ipcMain.handle('connect-begin', (_,args)=>engine.beginAccountConnection(args||{}));
-ipcMain.handle('wait-login-bridge', ()=>waitForQueuedSession(()=>engine.loginBridgeStatus()));
-ipcMain.handle('connect-complete', (_,args)=>engine.completeAccountConnection(args));
-function startManagedAccountWorker(mode, { timeoutMs = 600_000 } = {}) {
-  const engineDist = app.isPackaged ? path.join(process.resourcesPath, 'engine', 'dist') : path.resolve(__dirname, '../vendor/google-flow-mcp/dist');
-  const workerPath = path.join(__dirname, 'managed-login-worker.mjs');
-  let child;
-  const promise = new Promise((resolve,reject)=>{
-    child = spawn(process.execPath, [workerPath, engineDist, 'flowfree', String(timeoutMs), mode], {
-      env: { ...process.env, ELECTRON_RUN_AS_NODE: '1', FLOW_MCP_HEADLESS: '0' },
-      stdio: ['ignore', 'pipe', 'pipe']
-    });
-    let stdoutBuffer = '';
-    let stderr = '';
-    let completed;
-    const handleLine = (line)=>{
-      if (!line.trim()) return;
-      try {
-        const event = JSON.parse(line);
-        send({ channel:'managed-login', ...event });
-        if (event.type === 'complete') completed = event;
-        if (event.type === 'error') stderr = event.message;
-      } catch {
-        stderr += `${line}\n`;
-      }
-    };
-    child.stdout.on('data',(chunk)=>{
-      stdoutBuffer += chunk.toString();
-      const lines = stdoutBuffer.split('\n');
-      stdoutBuffer = lines.pop() || '';
-      lines.forEach(handleLine);
-    });
-    child.stderr.on('data',(chunk)=>{ stderr += chunk.toString(); });
-    child.once('error',(error)=>reject(error));
-    child.once('exit',(code)=>{
-      if (stdoutBuffer) handleLine(stdoutBuffer);
-      if (code === 0 && completed) resolve(completed);
-      else reject(new Error(stderr.trim() || `Managed login worker stopped with code ${code}.`));
-    });
-  });
-  return { child, promise };
-}
-const managedLoginCoordinator = new ManagedLoginCoordinator(startManagedAccountWorker);
-ipcMain.handle('connect-managed', ()=>managedLoginCoordinator.run('connect', { timeoutMs: 600_000 }));
+ipcMain.handle('connect-begin', ()=>{ throw new Error('Login Bridge cũ đã được thay bằng gflow-cli persistent Chrome login.'); });
+ipcMain.handle('wait-login-bridge', ()=>{ throw new Error('Login Bridge cũ đã tắt.'); });
+ipcMain.handle('connect-complete', ()=>{ throw new Error('Login Bridge cũ đã tắt.'); });
+ipcMain.handle('connect-managed', ()=>engine.connect());
 ipcMain.handle('inspect', async(_,accountId)=>{
-  if (accountId !== 'flowfree') throw new Error(`Managed account không hợp lệ: ${accountId}`);
-  const { capabilities } = await managedLoginCoordinator.run('verify', { timeoutMs: 30_000 });
+  const capabilities = await engine.inspectAccount(accountId);
   return { ...capabilities, phase1Compatibility: assessImageEngineCompatibility(capabilities) };
 });
 ipcMain.handle('prepare-image-queue', (_,cfg)=>buildImageQueue(cfg));
 ipcMain.handle('disconnect-account', ()=>({
   ok:false,
   supported:false,
-  reason:'google-flow-mcp 0.2.3 không cung cấp tool disconnect/remove account.'
+  reason:'Disconnect sẽ xóa profile đăng nhập; chưa bật trong UI để tránh mất session.'
 }));
 ipcMain.handle('run-images', async(_,cfg)=>{
   if (cfg?.resolution !== 'flow-default') throw new Error('Engine chỉ hỗ trợ độ phân giải mặc định của Flow; 1K/2K/4K chưa có API xác minh.');
